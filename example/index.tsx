@@ -6,10 +6,15 @@ import { atom, useAtomValue } from 'jotai';
 import { createFormAtoms, useFormAtoms } from '../.';
 import type { ErrorStack } from '../dist/';
 
-const dataAtom = atom({});
+type FormData = {
+  email: string;
+  password: string;
+};
+
+const dataAtom = atom({} as FormData);
 const errorStackAtom = atom([] as ErrorStack);
 
-const formAtoms = createFormAtoms({ dataAtom, errorStackAtom });
+const formAtoms = createFormAtoms<FormData>({ dataAtom, errorStackAtom });
 const App = () => {
   const data = useAtomValue(dataAtom);
   const { useField } = useFormAtoms(formAtoms);
