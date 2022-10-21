@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Listeners } from './createForm';
 import { flexRender } from './flexRender';
 
@@ -41,7 +41,7 @@ const UnmountWrapper = ({
     return () => {
       onUnmount && onUnmount();
     };
-  }, []);
+  }, [onMount, onUnmount]);
 
   return <>{children}</>;
 };
