@@ -65,6 +65,7 @@
     "json-pointer": "^0.6.2"
   },
   "devDependencies": {
+    "@storybook/react": "^6.5.13",
     "@types/json-pointer": "^1.0.31",
     "tsdx": "^0.14.1",
     "tslib": "^2.4.0"

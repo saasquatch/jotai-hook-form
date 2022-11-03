@@ -13,7 +13,7 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
 
   const useField = (field: string) => {
     return {
-      error: errors.find((error) => error.jsonPointer === field)?.error,
+      error: errors.find(error => error.jsonPointer === field)?.error,
       ...(register as RegisterSetter)(field),
     };
   };
@@ -27,7 +27,7 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
     const value = useAtomValue(watchAtom);
     const obj = (control as (update: string) => ControlSetReturn)(field);
     return {
-      error: errors.find((error) => error.jsonPointer === field)?.error,
+      error: errors.find(error => error.jsonPointer === field)?.error,
       value,
       ...obj,
       onChange: (value: any) => {

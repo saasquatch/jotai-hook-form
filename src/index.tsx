@@ -1,5 +1,5 @@
 export { createFormAtoms } from './createForm';
-export { useFormAtoms } from './useFormAtoms';
+export { useFormAtoms, mockField } from './useFormAtoms';
 export { flexRender } from './flexRender';
 export { Conditional } from './Conditional';
 

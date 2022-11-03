@@ -1,7 +1,7 @@
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useMemo, useState } from 'react';
 import { Conditional } from '../src/Conditional';
-import { createFormAtoms } from '../src/createForm';
+import { createFormAtoms, ErrorStack } from '../src/createForm';
 import { useFormAtoms } from '../src/useFormAtoms';
 
 export default {
@@ -9,9 +9,9 @@ export default {
 };
 
 const useFormStory = (dataAtom: any) => {
-  const errorsAtom = React.useMemo(() => atom({}), []);
+  const errorStackAtom = React.useMemo(() => atom({} as ErrorStack), []);
   const formAtoms = React.useMemo(
-    () => createFormAtoms({ dataAtom, errorsAtom }),
+    () => createFormAtoms({ dataAtom, errorStackAtom }),
     []
   );
   const saveAtom = atom(null, (get, set) => {
@@ -38,7 +38,7 @@ export const Basic = () => {
       <label htmlFor="/controlled">Controlled Field</label>
       <input
         {...controlledField}
-        onChange={(e) => controlledField.onChange(e.target.value)}
+        onChange={e => controlledField.onChange(e.target.value)}
       />
       <label htmlFor="/uncontrolled">Uncontrolled Field</label>
       <input {...uncontrolledField} />
@@ -51,13 +51,12 @@ export const ConditionalOnUncontrolledField = () => {
   const { formAtoms } = useFormStory(dataAtom);
   const { useField, useControlledField } = useFormAtoms(formAtoms);
   // const field = useSetAtom(formAtoms.registerFieldAtom);
-  const firstNameAtom = React.useMemo(
-    () => formAtoms.watchAtom('/input'),
-    [formAtoms]
-  );
+  const firstNameAtom = React.useMemo(() => formAtoms.watchAtom('/input'), [
+    formAtoms,
+  ]);
   const showConditionalAtom = React.useMemo(
     () =>
-      atom((get) => {
+      atom(get => {
         const firstName = get(firstNameAtom);
         return !!firstName;
       }),
@@ -74,7 +73,7 @@ export const ConditionalOnUncontrolledField = () => {
       <Conditional show={showConditional} {...emailField.listeners}>
         <input
           {...emailField}
-          onChange={(e) => emailField.onChange(e.target.value)}
+          onChange={e => emailField.onChange(e.target.value)}
         />
       </Conditional>
     </div>
@@ -99,19 +98,19 @@ export const RadioFields = () => {
             type="radio"
             checked={controlledRadioField.value === 'a'}
             value="a"
-            onChange={(e) => controlledRadioField.onChange(e.target.value)}
+            onChange={e => controlledRadioField.onChange(e.target.value)}
           />
           <input
             type="radio"
             checked={controlledRadioField.value === 'b'}
             value="b"
-            onChange={(e) => controlledRadioField.onChange(e.target.value)}
+            onChange={e => controlledRadioField.onChange(e.target.value)}
           />
           <input
             type="radio"
             checked={controlledRadioField.value === 'c'}
             value="c"
-            onChange={(e) => controlledRadioField.onChange(e.target.value)}
+            onChange={e => controlledRadioField.onChange(e.target.value)}
           />
         </div>
       </div>
@@ -143,7 +142,7 @@ export const ConditionalRadioFields = () => {
   );
   const showFirstNameAtom = useMemo(
     () =>
-      atom((get) => {
+      atom(get => {
         const value = get(radioAtom);
         return value === 'a';
       }),
@@ -159,13 +158,13 @@ export const ConditionalRadioFields = () => {
             type="radio"
             checked={controlledRadioField.value === 'a'}
             value="a"
-            onChange={(e) => controlledRadioField.onChange(e.target.value)}
+            onChange={e => controlledRadioField.onChange(e.target.value)}
           />
           <input
             type="radio"
             checked={controlledRadioField.value === 'b'}
             value="b"
-            onChange={(e) => controlledRadioField.onChange(e.target.value)}
+            onChange={e => controlledRadioField.onChange(e.target.value)}
           />
         </div>
       </div>
@@ -194,11 +193,11 @@ export const MultipleConditionalFields = () => {
     []
   );
   const showSection1Atom = React.useMemo(
-    () => atom((get) => !!get(checkbox1Atom)),
+    () => atom(get => !!get(checkbox1Atom)),
     []
   );
   const showSection2Atom = React.useMemo(
-    () => atom((get) => get(showSection1Atom) && !!get(checkbox2Atom)),
+    () => atom(get => get(showSection1Atom) && !!get(checkbox2Atom)),
     []
   );
 
