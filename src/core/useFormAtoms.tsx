@@ -10,8 +10,12 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
   const register = useSetAtom(formAtoms.registerAtom);
   const hidden = useSetAtom(formAtoms.hiddenAtom);
   const errors = useAtomValue(formAtoms.errorsAtom);
+  // const validate = useSetAtom(formAtoms.validationAtom);
 
-  const useField = (field: string) => {
+  const useField = (
+    field: string
+    // { validation }: { validation?: (field: any) => boolean }
+  ) => {
     return {
       error: errors.find(error => error.jsonPointer === field)?.error,
       ...(register as RegisterSetter)(field),
@@ -20,15 +24,20 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
 
   const useControlledField = (
     field: string,
-    options?: { onChangeMiddleware: (param: any) => void }
+    options?: {
+      onChangeMiddleware: (param: any) => void;
+    }
   ) => {
     const watchAtom = formAtoms.watchAtom(field);
+    const metaAtom = formAtoms.fieldMetaAtom(field);
 
     const value = useAtomValue(watchAtom);
+    const meta = useAtomValue(metaAtom);
     const obj = (control as (update: string) => ControlSetReturn)(field);
     return {
       error: errors.find(error => error.jsonPointer === field)?.error,
       value,
+      meta,
       ...obj,
       onChange: (value: any) => {
         options?.onChangeMiddleware && options.onChangeMiddleware(value);

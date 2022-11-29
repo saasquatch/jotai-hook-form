@@ -115,6 +115,108 @@ export function createFormAtoms<T extends object>({
     }
   );
 
+  const initialDataBaseAtom = atom<null | Atom<any>>(null);
+  const initialDataAtom = atom(
+    get => get(initialDataBaseAtom),
+    (get, set, _dataAtom: Atom<any>) => {
+      set(initialDataBaseAtom, get(_dataAtom));
+    }
+  );
+  initialDataAtom.onMount = setAtom => {
+    setAtom(dataAtom);
+  };
+
+  const touchedFieldsAtom = atom(new Set<string>());
+
+  const formMetaAtom = atom<Record<string, any>>(get => {
+    const data = get(dataAtom);
+    const initialData = get(initialDataAtom);
+
+    const fields = get(fieldRegAtom);
+    const touchedFields = get(touchedFieldsAtom);
+
+    return Array.from(fields).reduce((prev, field) => {
+      if (!pointerHas(data, field)) return prev;
+
+      const fieldVal = pointerGet(data, field);
+
+      const dirty =
+        initialData &&
+        (!pointerHas(initialData, field) ||
+          (pointerHas(initialData, field) &&
+            fieldVal !== pointerGet(initialData, field)));
+
+      const touched = touchedFields.has(field);
+
+      return {
+        ...prev,
+        [field]: {
+          dirty,
+          touched,
+        },
+      };
+    }, {});
+  });
+
+  const fieldMetaAtom = atomFamily((field: string) =>
+    atom(get => {
+      const formMeta = get(formMetaAtom);
+
+      return formMeta[field];
+    })
+  );
+
+  const fieldAtom = atom(
+    _ => null,
+    (
+      get,
+      set,
+      {
+        field,
+        type,
+      }: { field: string; type?: 'uncontrolled' | 'transient' | 'controlled' }
+    ) => {
+      if (!get(fieldRegAtom).has(field))
+        set(fieldRegAtom, prev => prev.add(field));
+
+      const fieldConfigAtom =
+        type === 'uncontrolled'
+          ? registerAtom
+          : type === 'transient'
+          ? hiddenAtom
+          : controlAtom;
+
+      const fieldConfig = set(fieldConfigAtom, field);
+
+      return {
+        name: field,
+        // @ts-ignore: Allow override for transient fields;
+        listeners: {
+          onMount: () => {
+            set(dataAtom, prev => {
+              const next = { ...prev };
+              if (!pointerHas(next, field)) pointerSet(next, field, undefined);
+              return next;
+            });
+          },
+          onUnmount: () => {
+            set(dataAtom, prev => {
+              const next = { ...prev };
+              if (pointerHas(next, field)) {
+                pointerRemove(next, field);
+              }
+              return next;
+            });
+          },
+        },
+        ...((fieldConfig as unknown) as
+          | RegisterSetReturn
+          | ControlSetReturn
+          | HiddenSetReturn),
+      };
+    }
+  );
+
   /** Atom that listens to DOM changes on an attached element */
   const registerAtom: RegisterAtom = atom(
     _ => null,
@@ -151,6 +253,9 @@ export function createFormAtoms<T extends object>({
           // Get ref field object
           const el = e.target as HTMLInputElement;
           const value = getFromFormElement(el);
+
+          if (!get(touchedFieldsAtom).has(field))
+            set(touchedFieldsAtom, prev => prev.add(field));
 
           if (value === '') {
             set(dataAtom, prev => {
@@ -206,6 +311,9 @@ export function createFormAtoms<T extends object>({
             pointerSet(next, field, value);
             return next;
           });
+
+          if (!get(touchedFieldsAtom).has(field))
+            set(touchedFieldsAtom, prev => prev.add(field));
         },
       };
     }
@@ -348,6 +456,7 @@ export function createFormAtoms<T extends object>({
     watchAtom,
     validationAtom,
     setAtom,
+    fieldMetaAtom,
 
     // Only helpful for nested forms
     errorsAtom,

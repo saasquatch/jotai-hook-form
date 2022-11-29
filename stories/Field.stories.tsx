@@ -1,8 +1,8 @@
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai';
 import React, { useMemo, useState } from 'react';
-import { Conditional } from '../src/Conditional';
-import { createFormAtoms, ErrorStack } from '../src/createForm';
-import { useFormAtoms } from '../src/useFormAtoms';
+import { Conditional } from '../src/core/Conditional';
+import { createFormAtoms, ErrorStack } from '../src/core/createForm';
+import { useFormAtoms } from '../src/core/useFormAtoms';
 
 export default {
   title: 'Jotai Hook Form / Base',

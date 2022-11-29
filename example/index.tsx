@@ -11,23 +11,27 @@ type FormData = {
   password: string;
 };
 
-const dataAtom = atom({} as FormData);
+const dataAtom = atom({email: "a@example.com", password: "password"} as FormData);
 const errorStackAtom = atom([] as ErrorStack);
 
 const formAtoms = createFormAtoms<FormData>({ dataAtom, errorStackAtom });
+
 const App = () => {
   const data = useAtomValue(dataAtom);
-  const { useField } = useFormAtoms(formAtoms);
-  const email = useField('/email');
-  const password = useField('/password');
+  const { useControlledField } = useFormAtoms(formAtoms);
+  const email = useControlledField('/email');
+  const password = useControlledField('/password');
 
   return (
     <div>
-      <input type="email" {...email} />
+      <input type="email" {...email} onChange={e => email.onChange(e.target.value)} />
       <br />
-      <input type="password" {...password} />
+      <input type="password" {...password} onChange={e => password.onChange(e.target.value)} />
       <hr />
       <pre>{JSON.stringify(data)}</pre>
+      <hr />
+      <pre>{JSON.stringify(email)}</pre>
+      <pre>{JSON.stringify(password)}</pre>
     </div>
   );
 };
