@@ -10,14 +10,20 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
   const register = useSetAtom(formAtoms.registerAtom);
   const hidden = useSetAtom(formAtoms.hiddenAtom);
   const errors = useAtomValue(formAtoms.errorsAtom);
-  // const validate = useSetAtom(formAtoms.validationAtom);
+  useAtomValue(formAtoms.initialDataAtom);
 
   const useField = (
-    field: string
-    // { validation }: { validation?: (field: any) => boolean }
+    field: string,
+    options?: {
+      validate: (value: string) => boolean;
+    }
   ) => {
+    const errorAtom = formAtoms.errorAtom(field);
+    const error = useAtomValue(errorAtom);
     return {
-      error: errors.find(error => error.jsonPointer === field)?.error,
+      error: options?.validate
+        ? error(options.validate)
+        : errors.find(error => error.jsonPointer === field)?.error,
       ...(register as RegisterSetter)(field),
     };
   };
@@ -25,19 +31,24 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
   const useControlledField = (
     field: string,
     options?: {
+      validate: (value: string) => boolean;
+      errorMessage: string;
       onChangeMiddleware: (param: any) => void;
     }
   ) => {
     const watchAtom = formAtoms.watchAtom(field);
-    const metaAtom = formAtoms.fieldMetaAtom(field);
+    const errorAtom = formAtoms.errorAtom(field);
 
+    const error = useAtomValue(errorAtom);
     const value = useAtomValue(watchAtom);
-    const meta = useAtomValue(metaAtom);
     const obj = (control as (update: string) => ControlSetReturn)(field);
+
     return {
-      error: errors.find(error => error.jsonPointer === field)?.error,
+      error: options?.validate
+        ? error(options.validate) &&
+          (options?.errorMessage || `Error on field ${field}`)
+        : errors.find(error => error.jsonPointer === field)?.error,
       value,
-      meta,
       ...obj,
       onChange: (value: any) => {
         options?.onChangeMiddleware && options.onChangeMiddleware(value);

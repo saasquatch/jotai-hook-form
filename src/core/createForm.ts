@@ -128,93 +128,40 @@ export function createFormAtoms<T extends object>({
 
   const touchedFieldsAtom = atom(new Set<string>());
 
-  const formMetaAtom = atom<Record<string, any>>(get => {
-    const data = get(dataAtom);
-    const initialData = get(initialDataAtom);
+  const fieldMetaAtom = atomFamily((field: string) =>
+    atom(get => {
+      const data = get(dataAtom);
+      const initialData = get(initialDataAtom);
+      if (!pointerHas(data, field)) return undefined;
 
-    const fields = get(fieldRegAtom);
-    const touchedFields = get(touchedFieldsAtom);
-
-    return Array.from(fields).reduce((prev, field) => {
-      if (!pointerHas(data, field)) return prev;
+      const touchedFields = get(touchedFieldsAtom);
 
       const fieldVal = pointerGet(data, field);
 
+      console.log({ initialData, fieldVal });
+
       const dirty =
-        initialData &&
+        !!initialData &&
         (!pointerHas(initialData, field) ||
           (pointerHas(initialData, field) &&
             fieldVal !== pointerGet(initialData, field)));
 
       const touched = touchedFields.has(field);
 
-      return {
-        ...prev,
-        [field]: {
-          dirty,
-          touched,
-        },
-      };
-    }, {});
-  });
-
-  const fieldMetaAtom = atomFamily((field: string) =>
-    atom(get => {
-      const formMeta = get(formMetaAtom);
-
-      return formMeta[field];
+      return { dirty, touched };
     })
   );
 
-  const fieldAtom = atom(
-    _ => null,
-    (
-      get,
-      set,
-      {
-        field,
-        type,
-      }: { field: string; type?: 'uncontrolled' | 'transient' | 'controlled' }
-    ) => {
-      if (!get(fieldRegAtom).has(field))
-        set(fieldRegAtom, prev => prev.add(field));
+  const errorAtom = atomFamily((field: string) =>
+    atom(get => {
+      const valueAtom = watchAtom(field);
+      const metaAtom = fieldMetaAtom(field);
 
-      const fieldConfigAtom =
-        type === 'uncontrolled'
-          ? registerAtom
-          : type === 'transient'
-          ? hiddenAtom
-          : controlAtom;
-
-      const fieldConfig = set(fieldConfigAtom, field);
-
-      return {
-        name: field,
-        // @ts-ignore: Allow override for transient fields;
-        listeners: {
-          onMount: () => {
-            set(dataAtom, prev => {
-              const next = { ...prev };
-              if (!pointerHas(next, field)) pointerSet(next, field, undefined);
-              return next;
-            });
-          },
-          onUnmount: () => {
-            set(dataAtom, prev => {
-              const next = { ...prev };
-              if (pointerHas(next, field)) {
-                pointerRemove(next, field);
-              }
-              return next;
-            });
-          },
-        },
-        ...((fieldConfig as unknown) as
-          | RegisterSetReturn
-          | ControlSetReturn
-          | HiddenSetReturn),
+      return (rule: any) => {
+        const meta = get(metaAtom);
+        if (meta?.touched && meta?.dirty) return rule(get(valueAtom));
       };
-    }
+    })
   );
 
   /** Atom that listens to DOM changes on an attached element */
@@ -456,7 +403,8 @@ export function createFormAtoms<T extends object>({
     watchAtom,
     validationAtom,
     setAtom,
-    fieldMetaAtom,
+    errorAtom,
+    initialDataAtom,
 
     // Only helpful for nested forms
     errorsAtom,
