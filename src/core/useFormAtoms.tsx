@@ -16,13 +16,15 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
     field: string,
     options?: {
       validate: (value: string) => boolean;
+      errorMessage: string;
     }
   ) => {
     const errorAtom = formAtoms.errorAtom(field);
     const error = useAtomValue(errorAtom);
     return {
       error: options?.validate
-        ? error(options.validate)
+        ? error(options.validate) &&
+          (options?.errorMessage || `Error on field: ${field}`)
         : errors.find(error => error.jsonPointer === field)?.error,
       ...(register as RegisterSetter)(field),
     };
@@ -46,7 +48,7 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
     return {
       error: options?.validate
         ? error(options.validate) &&
-          (options?.errorMessage || `Error on field ${field}`)
+          (options?.errorMessage || `Error on field: ${field}`)
         : errors.find(error => error.jsonPointer === field)?.error,
       value,
       ...obj,
