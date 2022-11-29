@@ -157,9 +157,10 @@ export function createFormAtoms<T extends object>({
       const valueAtom = watchAtom(field);
       const metaAtom = fieldMetaAtom(field);
 
-      return (rule: any) => {
+      return (rule: (value: any) => boolean) => {
         const meta = get(metaAtom);
-        if (meta?.touched && meta?.dirty) return rule(get(valueAtom));
+        if (meta?.touched && meta?.dirty) return !rule(get(valueAtom));
+        return false;
       };
     })
   );

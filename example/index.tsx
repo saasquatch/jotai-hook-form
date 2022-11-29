@@ -28,7 +28,7 @@ const App = () => {
 const Input = ({ name, type, validation }: {name: any, type: any, validation?: any}) => {
   const { useControlledField } = useFormAtoms(formAtoms);
   const field = useControlledField(name, {
-    validate: (value) => !value,
+    validate: (value) => !!value,
     errorMessage: "Field is required"
   });
 
