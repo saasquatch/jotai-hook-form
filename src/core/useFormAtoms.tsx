@@ -1,31 +1,28 @@
 import { useAtomValue, useSetAtom } from 'jotai';
+import { createFormAtoms } from './createForm';
 import {
+  ControlSetParams,
   ControlSetReturn,
-  createFormAtoms,
+  FieldValidation,
   RegisterSetter,
-} from './createForm';
+} from './types';
 
 export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
   const control = useSetAtom(formAtoms.controlAtom);
   const register = useSetAtom(formAtoms.registerAtom);
   const hidden = useSetAtom(formAtoms.hiddenAtom);
-  const errors = useAtomValue(formAtoms.errorsAtom);
-  useAtomValue(formAtoms.initialDataAtom);
 
   const useField = (
-    field: string,
-    options?: {
-      validate: (value: string) => boolean;
-      errorMessage: string;
-    }
+    field: string
+    // options?: {
+    //   validate?: FieldValidation;
+    //   errorMessage?: string;
+    // }
   ) => {
     const errorAtom = formAtoms.errorAtom(field);
     const error = useAtomValue(errorAtom);
     return {
-      error: options?.validate
-        ? error(options.validate) &&
-          (options?.errorMessage || `Error on field: ${field}`)
-        : errors.find(error => error.jsonPointer === field)?.error,
+      error,
       ...(register as RegisterSetter)(field),
     };
   };
@@ -33,9 +30,8 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
   const useControlledField = (
     field: string,
     options?: {
-      validate: (value: string) => boolean;
-      errorMessage: string;
-      onChangeMiddleware: (param: any) => void;
+      validate?: FieldValidation;
+      onChangeMiddleware?: (param: any) => void;
     }
   ) => {
     const watchAtom = formAtoms.watchAtom(field);
@@ -43,13 +39,13 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
 
     const error = useAtomValue(errorAtom);
     const value = useAtomValue(watchAtom);
-    const obj = (control as (update: string) => ControlSetReturn)(field);
+    const obj = (control as (params: ControlSetParams) => ControlSetReturn)({
+      field,
+      validation: options?.validate,
+    });
 
     return {
-      error: options?.validate
-        ? error(options.validate) &&
-          (options?.errorMessage || `Error on field: ${field}`)
-        : errors.find(error => error.jsonPointer === field)?.error,
+      error,
       value,
       ...obj,
       onChange: (value: any) => {

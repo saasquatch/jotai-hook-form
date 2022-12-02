@@ -14,7 +14,7 @@
     "start": "tsdx watch",
     "build": "tsdx build",
     "test": "tsdx test --passWithNoTests",
-    "lint": "tsdx lint",
+    "lint": "tsdx lint src",
     "prepare": "tsdx build",
     "size": "size-limit",
     "analyze": "size-limit --why",
@@ -68,6 +68,7 @@
     "@size-limit/preset-small-lib": "^8.1.0",
     "@storybook/react": "^6.5.13",
     "@types/json-pointer": "^1.0.31",
+    "fast-shallow-equal": "^1.0.0",
     "size-limit": "^8.1.0",
     "tsdx": "^0.14.1",
     "tslib": "^2.4.0"
