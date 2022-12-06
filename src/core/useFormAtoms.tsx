@@ -1,56 +1,88 @@
-import { useAtomValue, useSetAtom } from 'jotai';
+import { Atom, useAtomValue, useSetAtom } from 'jotai';
+import { useMemo } from 'react';
 import { createFormAtoms } from './createForm';
 import {
-  ControlSetParams,
-  ControlSetReturn,
   FieldValidation,
-  RegisterSetter,
+  // ControlSetParams,
+  // ControlSetReturn,
+  // RegisterSetter,
 } from './types';
 
+export const useFieldAtom = (fieldAtom: Atom<any>) => {
+  const field = useAtomValue(fieldAtom);
+
+  const value = useAtomValue(field.valueAtom);
+  const error = useAtomValue(field.errorAtom);
+  const dirty = useAtomValue(field.dirtyAtom);
+  const touched = useAtomValue(field.touchedAtom);
+  const config = useSetAtom(field.configAtom);
+
+  return {
+    error,
+    ...config(),
+    ...(value === null ? {} : { value }),
+    status: {
+      dirty,
+      touched,
+    },
+  };
+};
+
 export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
-  const control = useSetAtom(formAtoms.controlAtom);
-  const register = useSetAtom(formAtoms.registerAtom);
   const hidden = useSetAtom(formAtoms.hiddenAtom);
 
   const useField = (
-    field: string
-    // options?: {
-    //   validate?: FieldValidation;
-    //   errorMessage?: string;
-    // }
-  ) => {
-    const errorAtom = formAtoms.errorAtom(field);
-    const error = useAtomValue(errorAtom);
-    return {
-      error,
-      ...(register as RegisterSetter)(field),
-    };
-  };
-
-  const useControlledField = (
-    field: string,
+    name: string,
     options?: {
       validate?: FieldValidation;
       onChangeMiddleware?: (param: any) => void;
     }
   ) => {
-    const watchAtom = formAtoms.watchAtom(field);
-    const errorAtom = formAtoms.errorAtom(field);
+    const fieldAtom = useMemo(
+      () =>
+        formAtoms.fieldAtom(name, {
+          validate: options?.validate,
+          controlled: false,
+        }),
+      []
+    );
 
-    const error = useAtomValue(errorAtom);
-    const value = useAtomValue(watchAtom);
-    const obj = (control as (params: ControlSetParams) => ControlSetReturn)({
-      field,
-      validation: options?.validate,
-    });
+    const field = useFieldAtom(fieldAtom);
 
     return {
-      error,
-      value,
-      ...obj,
+      ...field,
       onChange: (value: any) => {
         options?.onChangeMiddleware && options.onChangeMiddleware(value);
-        obj.onChange(value);
+        // @ts-ignore;
+        field.onChange(value);
+      },
+    };
+  };
+
+  const useControlledField = (
+    name: string,
+    options?: {
+      validate?: FieldValidation;
+      onChangeMiddleware?: (param: any) => void;
+    }
+  ) => {
+    const fieldAtom = useMemo(
+      () =>
+        formAtoms.fieldAtom(name, {
+          validate: options?.validate,
+          controlled: true,
+        }),
+      []
+    );
+
+    const field = useFieldAtom(fieldAtom);
+
+    return {
+      ...field,
+      onChange: (value: any) => {
+        options?.onChangeMiddleware && options.onChangeMiddleware(value);
+        // @ts-ignore;
+        field.onChange(value);
       },
     };
   };

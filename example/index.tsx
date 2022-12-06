@@ -1,46 +1,77 @@
-import 'react-app-polyfill/ie11';
+import { atom, useAtomValue } from 'jotai';
 import * as React from 'react';
+import 'react-app-polyfill/ie11';
 import * as ReactDOM from 'react-dom';
-import { atom, useAtomValue, useSetAtom } from 'jotai';
 import { createFormAtoms, useFormAtoms } from '../.';
-import { ErrorStack } from '../dist/';
-import { atomFamily } from 'jotai/esm/utils/atomFamily';
 
 type FormData = {
   email: string;
   password: string;
 };
 
+const validateRequiredField = field => {
+  if (field.dirty && !field.value) {
+    return {
+      type: 'required',
+      message: `Field is required`,
+    };
+  }
+};
+
 const dataAtom = atom({
   email: 'a@example.com',
-  password: 'password',
+  password: 'asdfasdfasdf',
 } as FormData);
-const errorStackAtom = atom([] as ErrorStack);
 
-const formAtoms = createFormAtoms<FormData>({ dataAtom, errorStackAtom });
+const formAtoms = createFormAtoms<FormData>({ dataAtom });
+// const emailAtom = formAtoms.fieldAtom('/email', {
+//   validate: validateRequiredField,
+//   controlled: false,
+// });
 
 const App = () => {
-  const errorStack = useAtomValue(formAtoms.errorStackAtom);
+  // const email = useFieldAtom(emailAtom);
+
   return (
     <div>
-      <Input type="email" name="/email" />
+      {/* <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <input {...email} />
+        <span>Error: {email.error?.message}</span>
+        <pre>{JSON.stringify(email)}</pre>
+      </div> */}
+      <Input name="/email" type="email" />
       <hr />
-      <Input type="password" name="/password" />
+      <Input name="/password" type="password" />
       <hr />
-      <pre>{JSON.stringify(errorStack)}</pre>
+      <Data />
+      <hr />
+      <Errors />
     </div>
   );
+};
+
+const Data = () => {
+  const data = useAtomValue(dataAtom);
+
+  return <pre>{JSON.stringify(data)}</pre>;
+};
+
+const Errors = () => {
+  const errors = useAtomValue(formAtoms.errorStackAtom);
+
+  return <pre>{JSON.stringify(errors)}</pre>;
 };
 
 const Input = ({ name, type }: { name: any; type: any }) => {
   const { useControlledField } = useFormAtoms(formAtoms);
   const field = useControlledField(name, {
     validate: field => {
-      if (!field.value && field.touched)
+      if (field.dirty && !field.value) {
         return {
           type: 'required',
-          message: 'Field is required',
+          message: `Field is required`,
         };
+      }
     },
   });
 
