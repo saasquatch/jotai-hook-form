@@ -1,25 +1,23 @@
-import { Atom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtomValue, useSetAtom, WritableAtom } from 'jotai';
 import { useMemo } from 'react';
 import { createFormAtoms } from './createForm';
-import {
-  FieldValidation,
-  // ControlSetParams,
-  // ControlSetReturn,
-  // RegisterSetter,
-} from './types';
+import { FieldAtom, FieldValidation } from './types';
 
-export const useFieldAtom = (fieldAtom: Atom<any>) => {
+export const useFieldAtom = <T,>(fieldAtom: FieldAtom<T>) => {
   const field = useAtomValue(fieldAtom);
 
   const value = useAtomValue(field.valueAtom);
   const error = useAtomValue(field.errorAtom);
   const dirty = useAtomValue(field.dirtyAtom);
   const touched = useAtomValue(field.touchedAtom);
-  const config = useSetAtom(field.configAtom);
+
+  const config = useSetAtom(
+    (field.configAtom as unknown) as WritableAtom<null, undefined>
+  );
 
   return {
     error,
-    ...config(),
+    ...((config() as unknown) as T),
     ...(value === null ? {} : { value }),
     status: {
       dirty,
@@ -29,8 +27,6 @@ export const useFieldAtom = (fieldAtom: Atom<any>) => {
 };
 
 export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
-  const hidden = useSetAtom(formAtoms.hiddenAtom);
-
   const useField = (
     name: string,
     options?: {
@@ -42,7 +38,7 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
       () =>
         formAtoms.fieldAtom(name, {
           validate: options?.validate,
-          controlled: false,
+          type: 'uncontrolled',
         }),
       []
     );
@@ -53,7 +49,6 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
       ...field,
       onChange: (value: any) => {
         options?.onChangeMiddleware && options.onChangeMiddleware(value);
-        // @ts-ignore;
         field.onChange(value);
       },
     };
@@ -70,7 +65,7 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
       () =>
         formAtoms.fieldAtom(name, {
           validate: options?.validate,
-          controlled: true,
+          type: 'controlled',
         }),
       []
     );
@@ -81,27 +76,30 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
       ...field,
       onChange: (value: any) => {
         options?.onChangeMiddleware && options.onChangeMiddleware(value);
-        // @ts-ignore;
         field.onChange(value);
       },
     };
   };
 
   const useTransientField = (
-    field: string,
+    name: string,
     options?: { onChangeMiddleware: (param: any) => void }
   ) => {
-    const watchAtom = formAtoms.watchAtom(field);
+    const fieldAtom = useMemo(
+      () =>
+        formAtoms.fieldAtom(name, {
+          type: 'transient',
+        }),
+      []
+    );
 
-    const value = useAtomValue(watchAtom);
-    const obj = (hidden as (update: string) => any)(field);
+    const field = useFieldAtom(fieldAtom);
+
     return {
-      error: null,
-      value,
-      ...obj,
+      ...field,
       onChange: (value: any) => {
         options?.onChangeMiddleware && options.onChangeMiddleware(value);
-        obj.onChange(value);
+        field.onChange(value);
       },
     };
   };

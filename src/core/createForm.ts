@@ -13,8 +13,11 @@ import {
   ControlAtom,
   ControlSetReturn,
   ErrorStack,
+  FieldAtom,
+  FieldType,
   FieldValidation,
   HiddenAtom,
+  HiddenSetReturn,
   NestedErrorsAtom,
   NestedFormDataAtom,
   RegisterAtom,
@@ -142,6 +145,12 @@ export function createFormAtoms<FormData extends object>({
     }
   );
 
+  /**
+   * Contains array of ErrorStack objects
+   *
+   * @description Modify to edit the errors that are mapped to a field
+   *              via the corresponding json-pointer
+   */
   const errorStackBaseAtom = errorStackAtom || atom([] as ErrorStack);
   const checkErrorAtom = atom(
     null,
@@ -227,18 +236,42 @@ export function createFormAtoms<FormData extends object>({
    *
    *   `errorAtom`: Field error
    */
-  const fieldAtom = (
+  function fieldAtom(
     field: string,
     options?: {
       validate?: FieldValidation;
-      controlled?: boolean;
+      type: 'controlled';
     }
-  ) => {
+  ): FieldAtom<ControlSetReturn>;
+  function fieldAtom(
+    field: string,
+    options?: {
+      validate?: FieldValidation;
+      type: 'uncontrolled';
+    }
+  ): FieldAtom<RegisterSetReturn>;
+  function fieldAtom(
+    field: string,
+    options?: {
+      validate?: FieldValidation;
+      type: 'transient';
+    }
+  ): FieldAtom<HiddenSetReturn>;
+  function fieldAtom(
+    field: string,
+    options?: {
+      validate?: FieldValidation;
+      type?: FieldType;
+    }
+  ) {
     const nameAtom = atom(field);
-    const controlled = options?.controlled || options?.controlled === undefined;
 
     const valueBaseAtom = atom(get => {
-      if (controlled) {
+      if (options?.type !== 'uncontrolled') {
+        if (field in get(transientFieldStoreAtom)) {
+          return get(transientFieldStoreAtom)[field];
+        }
+
         const data = get(dataAtom);
         if (pointerHas(data, field)) {
           return pointerGet(data, field);
@@ -247,6 +280,7 @@ export function createFormAtoms<FormData extends object>({
         return null;
       }
     });
+
     const valueAtom = atom(
       get => get(valueBaseAtom),
       (get, set) => {
@@ -265,17 +299,20 @@ export function createFormAtoms<FormData extends object>({
     const touchedAtom = trackTouchedAtom(field);
     const fieldErrorAtom = errorAtom(field);
 
-    const configAtom = atom(
+    const configAtom: WritableAtom<null, undefined, any> = atom(
       _ => null,
       (_, set) => {
-        const _atom = controlled
-          ? ((set(controlAtom, {
+        switch (options?.type) {
+          case 'uncontrolled':
+            return (set(registerAtom, field) as unknown) as RegisterSetReturn;
+          case 'transient':
+            return (set(hiddenAtom, field) as unknown) as HiddenSetReturn;
+          default:
+            return (set(controlAtom, {
               field,
               validation: options?.validate,
-            }) as unknown) as ControlSetReturn)
-          : ((set(registerAtom, field) as unknown) as RegisterSetReturn);
-
-        return _atom;
+            }) as unknown) as ControlSetReturn;
+        }
       }
     );
 
@@ -287,7 +324,7 @@ export function createFormAtoms<FormData extends object>({
       dirtyAtom,
       touchedAtom,
     });
-  };
+  }
 
   /** Atom that listens to DOM changes on an attached element */
   const registerAtom: RegisterAtom = atom(
@@ -385,7 +422,6 @@ export function createFormAtoms<FormData extends object>({
           },
         },
         onBlur: () => {
-          console.debug('onblur');
           set(touchedFieldsAtom, prev => new Set(Array.from(prev.add(field))));
         },
         onChange: (value: unknown) => {
@@ -526,8 +562,6 @@ export function createFormAtoms<FormData extends object>({
 
   return {
     fieldAtom,
-    // registerAtom,
-    // controlAtom,
     hiddenAtom,
     formActionsAtom,
     watchAtom,

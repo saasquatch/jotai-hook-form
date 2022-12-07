@@ -2,20 +2,11 @@ import { atom, useAtomValue } from 'jotai';
 import * as React from 'react';
 import 'react-app-polyfill/ie11';
 import * as ReactDOM from 'react-dom';
-import { createFormAtoms, useFormAtoms } from '../.';
+import { createFormAtoms, useFieldAtom, useFormAtoms } from '../.';
 
 type FormData = {
   email: string;
   password: string;
-};
-
-const validateRequiredField = field => {
-  if (field.dirty && !field.value) {
-    return {
-      type: 'required',
-      message: `Field is required`,
-    };
-  }
 };
 
 const dataAtom = atom({
@@ -24,21 +15,24 @@ const dataAtom = atom({
 } as FormData);
 
 const formAtoms = createFormAtoms<FormData>({ dataAtom });
-// const emailAtom = formAtoms.fieldAtom('/email', {
-//   validate: validateRequiredField,
-//   controlled: false,
-// });
+const checkAtom = formAtoms.fieldAtom('/checked', {
+  validate: () => undefined,
+  type: 'transient',
+});
 
 const App = () => {
-  // const email = useFieldAtom(emailAtom);
+  const check = useFieldAtom(checkAtom);
 
   return (
     <div>
-      {/* <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <input {...email} />
-        <span>Error: {email.error?.message}</span>
-        <pre>{JSON.stringify(email)}</pre>
-      </div> */}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <input
+          type="checkbox"
+          checked={check.value}
+          onChange={e => check.onChange(e.target.checked)}
+        />
+        <pre>{JSON.stringify(check)}</pre>
+      </div>
       <Input name="/email" type="email" />
       <hr />
       <Input name="/password" type="password" />

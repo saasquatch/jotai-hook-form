@@ -16,6 +16,8 @@ export type ErrorType = {
   };
 };
 
+export type FieldType = 'controlled' | 'uncontrolled' | 'transient';
+
 export type FieldStatus = {
   value: any;
   touched: boolean;
@@ -57,8 +59,8 @@ export type Listeners = {
   onMount: () => void;
 };
 
-export type FieldAtom = WritableAtom<Record<string, string>, FieldUpdate>;
-export type FieldUpdate = { key: string; controlled?: boolean };
+// export type FieldAtom = WritableAtom<Record<string, string>, FieldUpdate>;
+// export type FieldUpdate = { key: string; controlled?: boolean };
 
 export type TransientFieldStore = Record<string, any>;
 export type HiddenAtom = WritableAtom<null, string>;
@@ -98,4 +100,18 @@ export type FormAtoms<T> = {
   formDataAtom: NestedFormDataAtom<T>;
   validationAtom: ValidationAtom<T>;
   setAtom: SetAtom;
+};
+
+export type FieldAtom<T> = Atom<{
+  nameAtom: Atom<string>;
+  valueAtom: Atom<any>;
+  // @ts-ignore: Necessary to define type of return from setter;
+  configAtom: WritableAtom<null, undefined, T>;
+  errorAtom: Atom<ErrorType['error'] | undefined>;
+  touchedAtom: Atom<boolean>;
+  dirtyAtom: Atom<boolean>;
+}>;
+export type FieldOptions = {
+  validate?: FieldValidation;
+  type: FieldType;
 };
