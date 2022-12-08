@@ -243,21 +243,21 @@ export function createFormAtoms<FormData extends JsonObject>({
     field: string,
     options?: {
       validate?: FieldValidation;
-      type: 'controlled';
+      type?: 'controlled' | undefined;
     }
   ): FieldAtom<ControlSetReturn>;
   function fieldAtom(
     field: string,
     options?: {
       validate?: FieldValidation;
-      type: 'uncontrolled';
+      type?: 'uncontrolled';
     }
   ): FieldAtom<RegisterSetReturn>;
   function fieldAtom(
     field: string,
     options?: {
       validate?: FieldValidation;
-      type: 'transient';
+      type?: 'transient';
     }
   ): FieldAtom<HiddenSetReturn>;
   function fieldAtom(

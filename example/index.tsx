@@ -16,8 +16,7 @@ const dataAtom = atom({
 
 const formAtoms = createFormAtoms<FormData>({ dataAtom });
 const checkAtom = formAtoms.fieldAtom('/checked', {
-  validate: () => undefined,
-  type: 'transient',
+  validate: field => undefined,
 });
 
 const App = () => {
