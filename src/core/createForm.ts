@@ -6,6 +6,7 @@ import {
   remove as pointerRemove,
   set as pointerSet,
   parse as pointerParse,
+  JsonObject,
 } from 'json-pointer';
 import { ChangeEvent, SetStateAction } from 'react';
 import {
@@ -86,16 +87,17 @@ export function getElementEvent(el: HTMLInputElement): string {
 }
 
 type SetterUpdate = { field: string; el: HTMLInputElement | null };
+type DataAtom<T> = WritableAtom<T, SetStateAction<T>>;
 /**
  * Creates a form atom that can be registered
  *
  */
-export function createFormAtoms<FormData extends object>({
+export function createFormAtoms<FormData extends JsonObject>({
   dataAtom,
   errorStackAtom,
   transientFieldsAtom,
 }: {
-  dataAtom: WritableAtom<FormData, SetStateAction<FormData>>;
+  dataAtom: DataAtom<FormData>;
   errorStackAtom?: WritableAtom<ErrorStack, SetStateAction<ErrorStack>>;
   transientFieldsAtom?: WritableAtom<Record<string, any>, Record<string, any>>;
 }) {
@@ -152,6 +154,7 @@ export function createFormAtoms<FormData extends object>({
    *              via the corresponding json-pointer
    */
   const errorStackBaseAtom = errorStackAtom || atom([] as ErrorStack);
+  // @ts-ignore;
   const checkErrorAtom = atom(
     null,
     (get, set, { field, value }: { field: string; value: any }) => {
@@ -184,7 +187,7 @@ export function createFormAtoms<FormData extends object>({
     }
   );
 
-  const initialDataBaseAtom = atom<null | FormData>(null);
+  const initialDataBaseAtom = atom(null) as DataAtom<FormData | null>;
   const initialDataAtom = atom(
     get => get(initialDataBaseAtom),
     (get, set, _dataAtom: Atom<FormData>) => {
@@ -284,7 +287,7 @@ export function createFormAtoms<FormData extends object>({
     const valueAtom = atom(
       get => get(valueBaseAtom),
       (get, set) => {
-        set(initialDataBaseAtom, prev => {
+        set(initialDataBaseAtom, (prev: FormData | null) => {
           const next = { ...prev };
           pointerSet(next, field, get(valueBaseAtom));
           return next as FormData;
@@ -431,9 +434,8 @@ export function createFormAtoms<FormData extends object>({
             pointerSet(next, field, value);
             return next;
           });
-
-          // Update error with new value
-          set(checkErrorAtom, { value, field });
+          // // Update error with new value
+          // set(checkErrorAtom, { value, field });
         },
       };
     }

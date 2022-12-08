@@ -40,7 +40,7 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
           validate: options?.validate,
           type: 'uncontrolled',
         }),
-      [name, options]
+      []
     );
 
     const field = useFieldAtom(fieldAtom);
@@ -67,10 +67,11 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
           validate: options?.validate,
           type: 'controlled',
         }),
-      [name, options]
+      []
     );
 
     const field = useFieldAtom(fieldAtom);
+    console.log({ field });
 
     return {
       ...field,
@@ -90,7 +91,7 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
         formAtoms.fieldAtom(name, {
           type: 'transient',
         }),
-      [name]
+      []
     );
 
     const field = useFieldAtom(fieldAtom);

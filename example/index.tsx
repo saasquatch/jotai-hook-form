@@ -25,6 +25,8 @@ const App = () => {
 
   return (
     <div>
+      {/* <input {...email} onChange={e => email.onChange(e.target.value)} />
+      <input {...password} onChange={e => password.onChange(e.target.value)} /> */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <input
           type="checkbox"
