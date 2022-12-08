@@ -71,7 +71,6 @@ export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
     );
 
     const field = useFieldAtom(fieldAtom);
-    console.log({ field });
 
     return {
       ...field,

@@ -434,8 +434,8 @@ export function createFormAtoms<FormData extends JsonObject>({
             pointerSet(next, field, value);
             return next;
           });
-          // // Update error with new value
-          // set(checkErrorAtom, { value, field });
+          // Update error with new value
+          set(checkErrorAtom, { value, field });
         },
       };
     }
