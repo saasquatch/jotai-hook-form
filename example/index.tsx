@@ -2,7 +2,7 @@ import { atom, useAtomValue } from 'jotai';
 import * as React from 'react';
 import 'react-app-polyfill/ie11';
 import * as ReactDOM from 'react-dom';
-import { createFormAtoms, useFieldAtom, useFormAtoms } from '../.';
+import { Conditional, createFormAtoms, useFieldAtom, useFormAtoms } from '../.';
 
 type FormData = {
   email: string;
@@ -21,6 +21,10 @@ const checkAtom = formAtoms.fieldAtom('/checked', {
 
 const App = () => {
   const check = useFieldAtom(checkAtom);
+  const { useField } = useFormAtoms(formAtoms);
+
+  const firstname = useField('/firstname');
+  const lastname = useField('/lastname');
 
   return (
     <div>
@@ -34,6 +38,11 @@ const App = () => {
         />
         <pre>{JSON.stringify(check)}</pre>
       </div>
+      <Conditional show={check.value} fields={[firstname, lastname]}>
+        <input {...firstname} />
+        <br />
+        <input {...lastname} />
+      </Conditional>
       <Input name="/email" type="email" />
       <hr />
       <Input name="/password" type="password" />
