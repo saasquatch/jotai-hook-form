@@ -18,18 +18,18 @@ const formAtoms = createFormAtoms<FormData>({ dataAtom });
 const checkAtom = formAtoms.fieldAtom('/checked', {
   validate: field => undefined,
 });
+// const firstNameAtom = formAtoms.fieldAtom('/firstname');
 
 const App = () => {
   const check = useFieldAtom(checkAtom);
-  const { useField } = useFormAtoms(formAtoms);
+  // const firstname = useFieldAtom(firstNameAtom);
+  const { useControlledField, useField } = useFormAtoms(formAtoms);
 
-  const firstname = useField('/firstname');
-  const lastname = useField('/lastname');
+  const firstname = useControlledField('/firstname');
+  const lastname = useControlledField('/lastname');
 
   return (
     <div>
-      {/* <input {...email} onChange={e => email.onChange(e.target.value)} />
-      <input {...password} onChange={e => password.onChange(e.target.value)} /> */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <input
           type="checkbox"
@@ -38,14 +38,22 @@ const App = () => {
         />
         <pre>{JSON.stringify(check)}</pre>
       </div>
-      <Conditional show={check.value} fields={[firstname, lastname]}>
-        <input {...firstname} />
+
+      <Conditional show={check.value} fields={[firstname]}>
+        <input
+          {...firstname}
+          onChange={e => firstname.onChange(e.target.value)}
+        />
         <br />
-        <input {...lastname} />
+        <input
+          {...lastname}
+          onChange={e => lastname.onChange(e.target.value)}
+        />
       </Conditional>
-      <Input name="/email" type="email" />
+
+      {/* <Input name="/email" type="email" />
       <hr />
-      <Input name="/password" type="password" />
+      <Input name="/password" type="password" /> */}
       <hr />
       <Data />
       <hr />

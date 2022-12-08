@@ -52,7 +52,7 @@ const UnmountWrapper = ({
     return () => {
       onUnmount && onUnmount.forEach(unmountFn => unmountFn?.());
     };
-  }, [onMount, onUnmount]);
+  }, []);
 
   return <>{children}</>;
 };

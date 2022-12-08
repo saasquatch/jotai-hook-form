@@ -6,6 +6,7 @@ import { FieldAtom, FieldValidation } from './types';
 export const useFieldAtom = <T,>(fieldAtom: FieldAtom<T>) => {
   const field = useAtomValue(fieldAtom);
 
+  const name = useAtomValue(field.nameAtom);
   const value = useAtomValue(field.valueAtom);
   const error = useAtomValue(field.errorAtom);
   const dirty = useAtomValue(field.dirtyAtom);
@@ -14,6 +15,8 @@ export const useFieldAtom = <T,>(fieldAtom: FieldAtom<T>) => {
   const config = useSetAtom(
     (field.configAtom as unknown) as WritableAtom<null, undefined>
   );
+
+  console.log('running useFieldAtom', name);
 
   return {
     error,
