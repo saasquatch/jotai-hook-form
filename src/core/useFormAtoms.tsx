@@ -16,9 +16,8 @@ export const useFieldAtom = <T,>(fieldAtom: FieldAtom<T>) => {
     (field.configAtom as unknown) as WritableAtom<null, undefined>
   );
 
-  console.log('running useFieldAtom', name);
-
   return {
+    name,
     error,
     ...((config() as unknown) as T),
     ...(value === null ? {} : { value }),

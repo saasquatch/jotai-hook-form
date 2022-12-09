@@ -268,7 +268,6 @@ export function createFormAtoms<FormData extends JsonObject>({
     }
   ) {
     const nameAtom = atom(field);
-    console.log('running fieldAtom', field);
 
     const valueBaseAtom = atom(get => {
       if (options?.type !== 'uncontrolled') {
