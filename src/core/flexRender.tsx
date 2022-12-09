@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react';
 
 export type Renderable<TProps> = React.ReactNode | React.ComponentType<TProps>;
 
@@ -18,14 +18,14 @@ function isReactComponent<TProps>(
 ): component is React.ComponentType<TProps> {
   return (
     isClassComponent(component) ||
-    typeof component === "function" ||
+    typeof component === 'function' ||
     isExoticComponent(component)
   );
 }
 
 function isClassComponent(component: any) {
   return (
-    typeof component === "function" &&
+    typeof component === 'function' &&
     (() => {
       const proto = Object.getPrototypeOf(component);
       return proto.prototype && proto.prototype.isReactComponent;
@@ -35,8 +35,8 @@ function isClassComponent(component: any) {
 
 function isExoticComponent(component: any) {
   return (
-    typeof component === "object" &&
-    typeof component.$$typeof === "symbol" &&
-    ["react.memo", "react.forward_ref"].includes(component.$$typeof.description)
+    typeof component === 'object' &&
+    typeof component.$$typeof === 'symbol' &&
+    ['react.memo', 'react.forward_ref'].includes(component.$$typeof.description)
   );
 }

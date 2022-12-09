@@ -6,15 +6,28 @@ import {
   remove as pointerRemove,
   set as pointerSet,
   parse as pointerParse,
+  JsonObject,
 } from 'json-pointer';
 import { ChangeEvent, SetStateAction } from 'react';
-
-type ShouldRemove<Param> = (createdAt: number, param: Param) => boolean;
-interface AtomFamily<Param, AtomType> {
-  (param: Param): AtomType;
-  remove(param: Param): void;
-  setShouldRemove(shouldRemove: ShouldRemove<Param> | null): void;
-}
+import {
+  ActionsAtom,
+  ControlAtom,
+  ControlSetReturn,
+  ErrorStack,
+  FieldAtom,
+  FieldType,
+  FieldValidation,
+  HiddenAtom,
+  HiddenSetReturn,
+  NestedErrorsAtom,
+  NestedFormDataAtom,
+  RegisterAtom,
+  RegisterSetReturn,
+  SetAtom,
+  TransientFieldStore,
+  ValidationAtom,
+  WatchAtom,
+} from './types';
 
 function isInput(el: HTMLElement): el is HTMLInputElement {
   return el?.tagName === 'INPUT';
@@ -74,26 +87,30 @@ export function getElementEvent(el: HTMLInputElement): string {
 }
 
 type SetterUpdate = { field: string; el: HTMLInputElement | null };
+type DataAtom<T> = WritableAtom<T, SetStateAction<T>>;
 /**
  * Creates a form atom that can be registered
  *
  */
-export function createFormAtoms<T extends object>({
+export function createFormAtoms<FormData extends JsonObject>({
   dataAtom,
   errorStackAtom,
   transientFieldsAtom,
 }: {
-  dataAtom: WritableAtom<T, SetStateAction<T>>;
-  errorStackAtom: WritableAtom<ErrorStack, ErrorStack>;
+  dataAtom: DataAtom<FormData>;
+  errorStackAtom?: WritableAtom<ErrorStack, SetStateAction<ErrorStack>>;
   transientFieldsAtom?: WritableAtom<Record<string, any>, Record<string, any>>;
 }) {
   const refsAtom = atom({} as Record<string, Set<HTMLInputElement>>);
   const fieldRegAtom = atom(new Set<string>());
+  const fieldValidationAtom = atom<Record<string, FieldValidation>>({});
+  const touchedFieldsAtom = atom(new Set<string>());
+
   const regAtom = atom(
-    (get) => get(refsAtom),
+    get => get(refsAtom),
     (get, set, { field, el }: SetterUpdate) => {
       if (el === null) {
-        set(refsAtom, (prev) => {
+        set(refsAtom, prev => {
           const next = { ...prev };
           delete next[field];
           return next;
@@ -106,7 +123,7 @@ export function createFormAtoms<T extends object>({
         if (pointerHas(data, field)) {
           const value = pointerGet(data, field);
           setInFormElement(el, value);
-          set(refsAtom, (prev) => ({
+          set(refsAtom, prev => ({
             ...prev,
             [field]: prev[field]?.add(el) || new Set([el]),
           }));
@@ -115,12 +132,209 @@ export function createFormAtoms<T extends object>({
     }
   );
 
+  const transientFieldStoreBaseAtom = atom<TransientFieldStore>({});
+  const transientFieldStoreAtom = atom<
+    TransientFieldStore,
+    TransientFieldStore
+  >(
+    get => {
+      if (transientFieldsAtom) return get(transientFieldsAtom);
+      return get(transientFieldStoreBaseAtom);
+    },
+    (_, set, next) => {
+      if (transientFieldsAtom) set(transientFieldsAtom, next);
+      set(transientFieldStoreBaseAtom, next);
+    }
+  );
+
+  /**
+   * Contains array of ErrorStack objects
+   *
+   * @description Modify to edit the errors that are mapped to a field
+   *              via the corresponding json-pointer
+   */
+  const errorStackBaseAtom = errorStackAtom || atom([] as ErrorStack);
+  // @ts-ignore;
+  const checkErrorAtom = atom(
+    null,
+    (get, set, { field, value }: { field: string; value: any }) => {
+      const data = get(dataAtom);
+      const dirty = get(trackDirtyAtom(field));
+      const touched = get(trackTouchedAtom(field));
+
+      // Run validation if it exists
+      const fieldValidation = get(fieldValidationAtom);
+      if (fieldValidation[field] && pointerHas(data, field)) {
+        const error = fieldValidation[field]({ value, dirty, touched });
+        if (error) {
+          set(errorStackBaseAtom, prev => [
+            ...prev,
+            ...(error
+              ? [
+                  {
+                    jsonPointer: field,
+                    error,
+                  },
+                ]
+              : []),
+          ]);
+        } else {
+          set(errorStackBaseAtom, prev =>
+            prev.filter(_field => _field.jsonPointer !== field)
+          );
+        }
+      }
+    }
+  );
+
+  const initialDataBaseAtom = atom(null) as DataAtom<FormData | null>;
+  const initialDataAtom = atom(
+    get => get(initialDataBaseAtom),
+    (get, set, _dataAtom: Atom<FormData>) => {
+      set(initialDataBaseAtom, get(_dataAtom));
+    }
+  );
+  initialDataAtom.onMount = setAtom => {
+    // Stop more updates
+    setAtom(dataAtom);
+  };
+
+  const trackDirtyAtom = atomFamily<string, Atom<boolean>>(field =>
+    atom(get => {
+      const data = get(dataAtom);
+      const initialData = get(initialDataAtom);
+      if (!pointerHas(data, field)) return false;
+
+      const fieldVal = pointerGet(data, field);
+
+      // Dirty if value differs from initial data
+      const dirty =
+        !!initialData &&
+        (!pointerHas(initialData, field) ||
+          (pointerHas(initialData, field) &&
+            fieldVal !== pointerGet(initialData, field)));
+
+      return dirty;
+    })
+  );
+  const trackTouchedAtom = atomFamily((field: string) =>
+    atom(get => {
+      const touchedFields = get(touchedFieldsAtom);
+
+      return touchedFields.has(field);
+    })
+  );
+
+  /**
+   *
+   * @param field Json pointer to the associated property on the data object
+   * @param options
+   * @returns
+   *
+   *   `valueAtom`: Value of the field in dataAtom, otherwise `null`
+   *
+   *   `nameAtom`: Json pointer of field
+   *
+   *   `configAtom`: Any event listeners needs to connect to DOM
+   *
+   *   `errorAtom`: Field error
+   */
+  function fieldAtom(
+    field: string,
+    options?: {
+      validate?: FieldValidation;
+      type?: 'controlled' | undefined;
+    }
+  ): FieldAtom<ControlSetReturn>;
+  function fieldAtom(
+    field: string,
+    options?: {
+      validate?: FieldValidation;
+      type?: 'uncontrolled';
+    }
+  ): FieldAtom<RegisterSetReturn>;
+  function fieldAtom(
+    field: string,
+    options?: {
+      validate?: FieldValidation;
+      type?: 'transient';
+    }
+  ): FieldAtom<HiddenSetReturn>;
+  function fieldAtom(
+    field: string,
+    options?: {
+      validate?: FieldValidation;
+      type?: FieldType;
+    }
+  ) {
+    const nameAtom = atom(field);
+
+    const valueBaseAtom = atom(get => {
+      if (options?.type !== 'uncontrolled') {
+        if (field in get(transientFieldStoreAtom)) {
+          return get(transientFieldStoreAtom)[field];
+        }
+
+        const data = get(dataAtom);
+        if (pointerHas(data, field)) {
+          return pointerGet(data, field);
+        }
+      } else {
+        return null;
+      }
+    });
+
+    const valueAtom = atom(
+      get => get(valueBaseAtom),
+      (get, set) => {
+        set(initialDataBaseAtom, (prev: FormData | null) => {
+          const next = { ...prev };
+          pointerSet(next, field, get(valueBaseAtom));
+          return next as FormData;
+        });
+      }
+    );
+    valueAtom.onMount = setAtom => {
+      setAtom();
+    };
+
+    const dirtyAtom = trackDirtyAtom(field);
+    const touchedAtom = trackTouchedAtom(field);
+    const fieldErrorAtom = errorAtom(field);
+
+    const configAtom: WritableAtom<null, undefined, any> = atom(
+      _ => null,
+      (_, set) => {
+        switch (options?.type) {
+          case 'uncontrolled':
+            return (set(registerAtom, field) as unknown) as RegisterSetReturn;
+          case 'transient':
+            return (set(hiddenAtom, field) as unknown) as HiddenSetReturn;
+          default:
+            return (set(controlAtom, {
+              field,
+              validation: options?.validate,
+            }) as unknown) as ControlSetReturn;
+        }
+      }
+    );
+
+    return atom({
+      nameAtom,
+      valueAtom,
+      configAtom,
+      errorAtom: fieldErrorAtom,
+      dirtyAtom,
+      touchedAtom,
+    });
+  }
+
   /** Atom that listens to DOM changes on an attached element */
   const registerAtom: RegisterAtom = atom(
-    (_) => null,
+    _ => null,
     (get, set, field: string) => {
       if (!get(fieldRegAtom).has(field))
-        set(fieldRegAtom, (prev) => prev.add(field));
+        set(fieldRegAtom, prev => prev.add(field));
 
       const inputEl = Array.from(get(regAtom)[field]?.values() || [])[0];
       const onEvent = getElementEvent(inputEl);
@@ -128,14 +342,14 @@ export function createFormAtoms<T extends object>({
         name: field,
         listeners: {
           onMount: () => {
-            set(dataAtom, (prev) => {
+            set(dataAtom, prev => {
               const next = { ...prev };
               if (!pointerHas(next, field)) pointerSet(next, field, undefined);
               return next;
             });
           },
           onUnmount: () => {
-            set(dataAtom, (prev) => {
+            set(dataAtom, prev => {
               const next = { ...prev };
               if (pointerHas(next, field)) {
                 pointerRemove(next, field);
@@ -147,13 +361,20 @@ export function createFormAtoms<T extends object>({
         ref: (el: HTMLInputElement | null) => {
           set(regAtom, { field, el });
         },
+        onBlur: () => {
+          if (!get(touchedFieldsAtom).has(field))
+            set(
+              touchedFieldsAtom,
+              prev => new Set(Array.from(prev.add(field)))
+            );
+        },
         [onEvent]: (e: ChangeEvent) => {
           // Get ref field object
           const el = e.target as HTMLInputElement;
           const value = getFromFormElement(el);
 
           if (value === '') {
-            set(dataAtom, (prev) => {
+            set(dataAtom, prev => {
               const next = { ...prev };
               pointerRemove(next, field);
               return next;
@@ -162,7 +383,7 @@ export function createFormAtoms<T extends object>({
           }
 
           // Trigger refresh of ref atom
-          set(dataAtom, (prev) => {
+          set(dataAtom, prev => {
             const next = { ...prev };
             pointerSet(next, field, value);
             return next;
@@ -176,22 +397,25 @@ export function createFormAtoms<T extends object>({
   /** Attaches directly to the dataAtom */
 
   const controlAtom: ControlAtom = atom(
-    (_) => null,
-    (get, set, field) => {
-      if (!get(fieldRegAtom).has(field))
-        set(fieldRegAtom, (prev) => prev.add(field));
+    _ => null,
+    (get, set, { field, validation }) => {
+      if (!get(fieldRegAtom).has(field)) {
+        set(fieldRegAtom, prev => prev.add(field));
+        validation &&
+          set(fieldValidationAtom, prev => ({ ...prev, [field]: validation }));
+      }
 
       return {
         listeners: {
           onMount: () => {
-            set(dataAtom, (prev) => {
+            set(dataAtom, prev => {
               const next = { ...prev };
               if (!pointerHas(next, field)) pointerSet(next, field, undefined);
               return next;
             });
           },
           onUnmount: () => {
-            set(dataAtom, (prev) => {
+            set(dataAtom, prev => {
               const next = { ...prev };
               if (pointerHas(next, field)) {
                 pointerRemove(next, field);
@@ -200,34 +424,25 @@ export function createFormAtoms<T extends object>({
             });
           },
         },
+        onBlur: () => {
+          set(touchedFieldsAtom, prev => new Set(Array.from(prev.add(field))));
+        },
         onChange: (value: unknown) => {
-          set(dataAtom, (prev) => {
+          // Update data atom
+          set(dataAtom, prev => {
             const next = { ...prev };
             pointerSet(next, field, value);
             return next;
           });
+          // Update error with new value
+          set(checkErrorAtom, { value, field });
         },
       };
     }
   );
 
-  const transientFieldStoreBaseAtom = atom<TransientFieldStore>({});
-  const transientFieldStoreAtom = atom<
-    TransientFieldStore,
-    TransientFieldStore
-  >(
-    (get) => {
-      if (transientFieldsAtom) return get(transientFieldsAtom);
-      return get(transientFieldStoreBaseAtom);
-    },
-    (_, set, next) => {
-      if (transientFieldsAtom) set(transientFieldsAtom, next);
-      set(transientFieldStoreBaseAtom, next);
-    }
-  );
-
   const hiddenAtom: HiddenAtom = atom(
-    (_) => null,
+    _ => null,
     (_, set, field: string) => {
       return {
         listeners: {
@@ -254,19 +469,19 @@ export function createFormAtoms<T extends object>({
       const refs = get(refsAtom);
       const refKeys = Object.keys(refs);
 
-      refKeys.forEach((refKey) => {
-        Array.from(refs[refKey]).forEach((el) => {
+      refKeys.forEach(refKey => {
+        Array.from(refs[refKey]).forEach(el => {
           setInFormElement(el, null);
         });
       });
       set(refsAtom, {});
       set(transientFieldStoreAtom, {});
-      set(dataAtom, () => ({} as T));
+      set(dataAtom, () => ({} as FormData));
     }
   });
 
   const watchAtom: WatchAtom = atomFamily(<X>(field: string) =>
-    atom<X>((get) => {
+    atom<X>(get => {
       if (field in get(transientFieldStoreAtom)) {
         return get(transientFieldStoreAtom)[field];
       }
@@ -279,35 +494,42 @@ export function createFormAtoms<T extends object>({
     })
   );
 
+  const errorAtom = atomFamily((field: string) =>
+    atom(get => {
+      const errorStore = get(errorStackBaseAtom);
+      return errorStore.find(error => error.jsonPointer === field)?.error;
+    })
+  );
+
   /** Filters error stack for only the errors in the current form
    * Useful for getting errors for nested forms
    */
-  const errorsAtom: NestedErrorsAtom = atom((get) => {
-    const errorStack = get(errorStackAtom);
+  const errorsAtom: NestedErrorsAtom = atom(get => {
+    const errorStack = get(errorStackBaseAtom);
     const fieldReg = Array.from(get(fieldRegAtom));
     const subErrors = fieldReg
-      .map((field) => getSubErrors(errorStack, field))
-      .flatMap((field) => field);
+      .map(field => getSubErrors(errorStack, field))
+      .flatMap(field => field);
 
     return subErrors;
   });
 
-  const validationAtom: ValidationAtom<T> = atom(
+  const validationAtom: ValidationAtom<FormData> = atom(
     null,
     (get, set, { resolver, data }) => {
       const baseData = data ? data : get(dataAtom);
       const validationErrors = resolver(baseData);
-      const mapToArray = Object.keys(validationErrors).map((key) => ({
+      const mapToArray = Object.keys(validationErrors).map(key => ({
         jsonPointer: key,
         error: validationErrors[key],
       }));
-      set(errorStackAtom, mapToArray);
+      set(errorStackBaseAtom, mapToArray);
     }
   );
 
   /** Returns a shallow copy of the part of the data object
       associated with this form instance */
-  const formDataAtom: NestedFormDataAtom<T> = atom((get) => {
+  const formDataAtom: NestedFormDataAtom<FormData> = atom(get => {
     const data = get(dataAtom);
     const fieldReg = Array.from(get(fieldRegAtom));
     return fieldReg.reduce((prev, field: string) => {
@@ -331,7 +553,7 @@ export function createFormAtoms<T extends object>({
       return;
     }
 
-    set(dataAtom, (prev) => {
+    set(dataAtom, prev => {
       const next = { ...prev };
       if (pointerHas(next, field)) {
         pointerSet(next, field, value);
@@ -341,13 +563,14 @@ export function createFormAtoms<T extends object>({
   });
 
   return {
-    registerAtom,
-    controlAtom,
+    fieldAtom,
     hiddenAtom,
     formActionsAtom,
     watchAtom,
     validationAtom,
     setAtom,
+    errorAtom,
+    errorStackAtom: errorStackBaseAtom,
 
     // Only helpful for nested forms
     errorsAtom,
@@ -361,13 +584,13 @@ export function getSubErrors(
 ) {
   if (typeof jsonPointer === 'string')
     return errorStack.filter(
-      (error) =>
+      error =>
         error.jsonPointer === jsonPointer ||
         error.jsonPointer.startsWith(jsonPointer)
     );
 
   // Array of strings
-  return errorStack.filter((error) => jsonPointer.includes(error.jsonPointer));
+  return errorStack.filter(error => jsonPointer.includes(error.jsonPointer));
 }
 
 export function hasSubErrors(
@@ -376,83 +599,3 @@ export function hasSubErrors(
 ) {
   return getSubErrors(errorStack, jsonPointer).length > 0;
 }
-
-export type ErrorStack = ErrorType[];
-export type ErrorType = {
-  jsonPointer: string;
-  error: {
-    type: string;
-    message?: string;
-  };
-};
-
-export type ValidationResolver<T> = (
-  data: T
-) => Record<string, ErrorType['error']>;
-
-export type RecordOfRefs = Record<string, { current: any }>;
-export type RegisterAtom = WritableAtom<null, string>;
-export type RegisterGetReturn = {
-  errors: Record<string, ErrorType['error']>;
-};
-export type RegisterSetter = (update: string) => RegisterSetReturn;
-export type RegisterSetReturn = {
-  name: string;
-  ref: (el: HTMLElement | null) => void;
-  onChange: (value: any) => void;
-  listeners: Listeners;
-};
-
-export type ControlAtom = WritableAtom<null, string>;
-export type ControlSetReturn = {
-  listeners: Listeners;
-  onChange: (value: any) => void;
-};
-
-export type Listeners = {
-  onUnmount: () => void;
-  onMount: () => void;
-};
-
-export type FieldAtom = WritableAtom<Record<string, string>, FieldUpdate>;
-export type FieldUpdate = { key: string; controlled?: boolean };
-
-export type TransientFieldStore = Record<string, any>;
-export type HiddenAtom = WritableAtom<null, string>;
-export type HiddenSetReturn = {
-  listeners: {
-    onUnmount: Listeners['onUnmount'];
-  };
-  onChange: (value: any) => void;
-};
-export type ActionsAtom = WritableAtom<null, ActionsSetter>;
-export type ActionsSetter =
-  | {
-      action: 'RESET';
-    }
-  | { action: unknown; next: any };
-
-export type WatchAtom = AtomFamily<string, Atom<any>>;
-export type NestedErrorsAtom = Atom<ErrorStack>;
-export type NestedFormDataAtom<T> = Atom<Partial<T>>;
-
-export type ValidationSetter<T> = {
-  resolver: ValidationResolver<T>;
-  data?: T;
-};
-export type ValidationAtom<T> = WritableAtom<null, ValidationSetter<T>>;
-export type SetAtom = WritableAtom<null, SetSetter>;
-export type SetSetter = { field: string; value: unknown | undefined };
-
-export type FormAtoms<T> = {
-  registerAtom: RegisterAtom;
-  controlAtom: ControlAtom;
-  hiddenAtom: HiddenAtom;
-
-  formActionsAtom: ActionsAtom;
-  watchAtom: WatchAtom;
-  errorsAtom: NestedErrorsAtom;
-  formDataAtom: NestedFormDataAtom<T>;
-  validationAtom: ValidationAtom<T>;
-  setAtom: SetAtom;
-};
