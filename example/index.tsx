@@ -15,17 +15,32 @@ const dataAtom = atom({
 } as FormData);
 
 const formAtoms = createFormAtoms<FormData>({ dataAtom });
-const checkAtom = formAtoms.fieldAtom('/checked', {
-  validate: field => undefined,
+const checkAtom = formAtoms.fieldAtom('/checked');
+const firstNameAtom = formAtoms.fieldAtom('/firstname', {
+  validate: field => {
+    if (!field.value && field.touched) {
+      return {
+        type: 'required',
+        message: 'First name is required',
+      };
+    }
+
+    if (!field.value.startsWith('test_') && field.touched) {
+      return {
+        type: 'required',
+        message: 'First name must start with "test_"',
+      };
+    }
+  },
+  type: 'controlled',
 });
-// const firstNameAtom = formAtoms.fieldAtom('/firstname');
 
 const App = () => {
   const check = useFieldAtom(checkAtom);
-  // const firstname = useFieldAtom(firstNameAtom);
-  const { useControlledField, useField } = useFormAtoms(formAtoms);
+  const firstname = useFieldAtom(firstNameAtom);
 
-  const firstname = useControlledField('/firstname');
+  const { useControlledField } = useFormAtoms(formAtoms);
+
   const lastname = useControlledField('/lastname');
 
   return (
@@ -39,21 +54,18 @@ const App = () => {
         <pre>{JSON.stringify(check)}</pre>
       </div>
 
-      <Conditional show={check.value} fields={[firstname]}>
+      <Conditional show={check.value} fields={[firstname, lastname]}>
         <input
           {...firstname}
           onChange={e => firstname.onChange(e.target.value)}
         />
+        <pre>{JSON.stringify(firstname.error)}</pre>
         <br />
         <input
           {...lastname}
           onChange={e => lastname.onChange(e.target.value)}
         />
       </Conditional>
-
-      {/* <Input name="/email" type="email" />
-      <hr />
-      <Input name="/password" type="password" /> */}
       <hr />
       <Data />
       <hr />
@@ -78,10 +90,10 @@ const Input = ({ name, type }: { name: any; type: any }) => {
   const { useControlledField } = useFormAtoms(formAtoms);
   const field = useControlledField(name, {
     validate: field => {
-      if (field.dirty && !field.value) {
+      if (field.touched && !field.value.startsWith('test_')) {
         return {
           type: 'required',
-          message: `Field is required`,
+          message: `Must start with "test_"`,
         };
       }
     },

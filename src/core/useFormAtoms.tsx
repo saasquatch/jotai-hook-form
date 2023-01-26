@@ -1,9 +1,36 @@
 import { useAtomValue, useSetAtom, WritableAtom } from 'jotai';
 import { useMemo } from 'react';
 import { createFormAtoms } from './createForm';
-import { FieldAtom, FieldValidation } from './types';
+import {
+  ControlSetReturn,
+  ErrorType,
+  FieldAtom,
+  FieldValidation,
+  HiddenSetReturn,
+  RegisterSetReturn,
+} from './types';
 
-export const useFieldAtom = <T,>(fieldAtom: FieldAtom<T>) => {
+export type UseFieldAtomCommon = {
+  name: string;
+  error: undefined | ErrorType['error'];
+  status: {
+    dirty: boolean;
+    touched: boolean;
+  };
+};
+
+export function useFieldAtom(
+  fieldAtom: FieldAtom<RegisterSetReturn>
+): RegisterSetReturn & UseFieldAtomCommon;
+export function useFieldAtom(
+  fieldAtom: FieldAtom<ControlSetReturn>
+): ControlSetReturn & { value: any } & UseFieldAtomCommon;
+export function useFieldAtom(
+  fieldAtom: FieldAtom<HiddenSetReturn>
+): HiddenSetReturn & UseFieldAtomCommon;
+export function useFieldAtom<T>(
+  fieldAtom: FieldAtom<T>
+): T & UseFieldAtomCommon {
   const field = useAtomValue(fieldAtom);
 
   const name = useAtomValue(field.nameAtom);
@@ -26,7 +53,7 @@ export const useFieldAtom = <T,>(fieldAtom: FieldAtom<T>) => {
       touched,
     },
   };
-};
+}
 
 export function useFormAtoms(formAtoms: ReturnType<typeof createFormAtoms>) {
   const useField = (

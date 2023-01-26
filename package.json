@@ -22,9 +22,9 @@
     "build-storybook": "build-storybook"
   },
   "peerDependencies": {
-    "react": ">=16",
     "jotai": ">=1",
-    "json-pointer": "^0.6.2"
+    "json-pointer": "^0.6.2",
+    "react": ">=16"
   },
   "husky": {
     "hooks": {
@@ -62,12 +62,18 @@
     }
   ],
   "devDependencies": {
+    "@size-limit/preset-small-lib": "^8.1.0",
+    "@storybook/react": "^6.5.13",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/react-hooks": "^8.0.1",
+    "@types/json-pointer": "^1.0.31",
     "@types/react": "^18.0.21",
     "jotai": ">=1",
     "json-pointer": "^0.6.2",
-    "@size-limit/preset-small-lib": "^8.1.0",
-    "@storybook/react": "^6.5.13",
-    "@types/json-pointer": "^1.0.31",
+    "react": ">=16",
+    "react-dom": "^18.2.0",
+    "react-test-renderer": "^18.2.0",
     "size-limit": "^8.1.0",
     "tsdx": "^0.14.1",
     "tslib": "^2.4.0"

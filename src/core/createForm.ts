@@ -9,6 +9,7 @@ import {
   JsonObject,
 } from 'json-pointer';
 import { ChangeEvent, SetStateAction } from 'react';
+import { addOrReplaceToStack } from '../utils/addOrReplaceToStack';
 import {
   ActionsAtom,
   ControlAtom,
@@ -166,18 +167,14 @@ export function createFormAtoms<FormData extends JsonObject>({
       const fieldValidation = get(fieldValidationAtom);
       if (fieldValidation[field] && pointerHas(data, field)) {
         const error = fieldValidation[field]({ value, dirty, touched });
+
         if (error) {
-          set(errorStackBaseAtom, prev => [
-            ...prev,
-            ...(error
-              ? [
-                  {
-                    jsonPointer: field,
-                    error,
-                  },
-                ]
-              : []),
-          ]);
+          const errorObj = {
+            jsonPointer: field,
+            error,
+          };
+
+          set(errorStackBaseAtom, prev => addOrReplaceToStack(prev, errorObj));
         } else {
           set(errorStackBaseAtom, prev =>
             prev.filter(_field => _field.jsonPointer !== field)
@@ -426,6 +423,11 @@ export function createFormAtoms<FormData extends JsonObject>({
         },
         onBlur: () => {
           set(touchedFieldsAtom, prev => new Set(Array.from(prev.add(field))));
+
+          // Check errors onBlur
+          const data = get(dataAtom);
+          if (pointerHas(data, field))
+            set(checkErrorAtom, { value: pointerGet(data, field), field });
         },
         onChange: (value: unknown) => {
           // Update data atom
