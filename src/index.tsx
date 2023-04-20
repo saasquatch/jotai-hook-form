@@ -1,7 +1,7 @@
-export { createFormAtoms } from './createForm';
-export { useFormAtoms } from './useFormAtoms';
-export { flexRender } from './flexRender';
-export { Conditional } from './Conditional';
+export { createFormAtoms } from "./core/createForm";
+export { useFormAtoms, mockField, useFieldAtom } from "./core/useFormAtoms";
+export { flexRender } from "./core/flexRender";
+export { Conditional } from "./core/Conditional";
 
-export type { FormAtoms, ErrorStack } from './createForm';
-export type { ConditionalProps } from './Conditional';
+export { FormAtoms, ErrorStack } from "./core/types";
+export { ConditionalProps } from "./core/Conditional";
