@@ -21,7 +21,6 @@ Inspired by `react-hook-form`, it allows for the progressive building of a form 
     - [Form atoms](#form-atoms)
     - [Field properties](#field-properties)
     - [Components](#components)
-  - [Typescript](#typescript)
 ## Quick start
 
 ```tsx
@@ -291,5 +290,3 @@ Properties of a field when returned from `useFieldAtom`
 | Component | Description |
 |-----------|-------------|
 | `Conditional` | Component that handles conditional form fields, removing them from the form `dataAtom` on unmount, and listening to onmount |
-
-## Typescript
