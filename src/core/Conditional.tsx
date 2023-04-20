@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { Listeners } from './types';
-import { flexRender } from './flexRender';
+import React, { useEffect } from "react";
+import { Listeners } from "./types";
+import { flexRender } from "./flexRender";
 
 export type ConditionalProps = {
   show: boolean;
@@ -16,7 +16,7 @@ export const Conditional = ({
   onMount,
   onUnmount,
   fields,
-  children,
+  children
 }: ConditionalProps) => {
   const Component = children;
 
@@ -40,10 +40,10 @@ export const Conditional = ({
 const UnmountWrapper = ({
   onMount,
   onUnmount,
-  children,
+  children
 }: {
-  onMount?: (Listeners['onMount'] | undefined)[];
-  onUnmount?: (Listeners['onUnmount'] | undefined)[];
+  onMount?: (Listeners["onMount"] | undefined)[];
+  onUnmount?: (Listeners["onUnmount"] | undefined)[];
   children: React.ReactNode;
 }) => {
   useEffect(() => {

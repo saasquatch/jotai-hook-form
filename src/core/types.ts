@@ -1,4 +1,4 @@
-import { Atom, WritableAtom } from 'jotai';
+import { Atom, WritableAtom } from "jotai";
 
 type ShouldRemove<Param> = (createdAt: number, param: Param) => boolean;
 interface AtomFamily<Param, AtomType> {
@@ -16,7 +16,7 @@ export type ErrorType = {
   };
 };
 
-export type FieldType = 'controlled' | 'uncontrolled' | 'transient';
+export type FieldType = "controlled" | "uncontrolled" | "transient";
 
 export type FieldStatus = {
   value: any;
@@ -25,16 +25,16 @@ export type FieldStatus = {
 };
 export type FieldValidation = (
   field: FieldStatus
-) => ErrorType['error'] | undefined;
+) => ErrorType["error"] | undefined;
 
 export type ValidationResolver<T> = (
   data: T
-) => Record<string, ErrorType['error']>;
+) => Record<string, ErrorType["error"]>;
 
 export type RecordOfRefs = Record<string, { current: any }>;
 export type RegisterAtom = WritableAtom<null, string>;
 export type RegisterGetReturn = {
-  errors: Record<string, ErrorType['error']>;
+  errors: Record<string, ErrorType["error"]>;
 };
 export type RegisterSetter = (update: string) => RegisterSetReturn;
 export type RegisterSetReturn = {
@@ -66,14 +66,14 @@ export type TransientFieldStore = Record<string, any>;
 export type HiddenAtom = WritableAtom<null, string>;
 export type HiddenSetReturn = {
   listeners: {
-    onUnmount: Listeners['onUnmount'];
+    onUnmount: Listeners["onUnmount"];
   };
   onChange: (value: any) => void;
 };
 export type ActionsAtom = WritableAtom<null, ActionsSetter>;
 export type ActionsSetter =
   | {
-      action: 'RESET';
+      action: "RESET";
     }
   | { action: unknown; next: any };
 
@@ -107,7 +107,7 @@ export type FieldAtom<T> = Atom<{
   valueAtom: Atom<any>;
   // @ts-ignore: Necessary to define type of return from setter;
   configAtom: WritableAtom<null, undefined, T>;
-  errorAtom: Atom<ErrorType['error'] | undefined>;
+  errorAtom: Atom<ErrorType["error"] | undefined>;
   touchedAtom: Atom<boolean>;
   dirtyAtom: Atom<boolean>;
 }>;

@@ -1,4 +1,4 @@
-import { ErrorStack, ErrorType } from '../core/types';
+import { ErrorStack, ErrorType } from "../core/types";
 
 export function addOrReplaceToStack(
   stack: ErrorStack,

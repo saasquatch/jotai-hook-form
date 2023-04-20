@@ -1,15 +1,15 @@
-import { Atom, atom, WritableAtom } from 'jotai';
-import { atomFamily } from 'jotai/utils';
+import { Atom, atom, WritableAtom } from "jotai";
+import { atomFamily } from "jotai/utils";
 import {
   get as pointerGet,
   has as pointerHas,
   remove as pointerRemove,
   set as pointerSet,
   parse as pointerParse,
-  JsonObject,
-} from 'json-pointer';
-import { ChangeEvent, SetStateAction } from 'react';
-import { addOrReplaceToStack } from '../utils/addOrReplaceToStack';
+  JsonObject
+} from "json-pointer";
+import { ChangeEvent, SetStateAction } from "react";
+import { addOrReplaceToStack } from "../utils/addOrReplaceToStack";
 import {
   ActionsAtom,
   ControlAtom,
@@ -27,14 +27,14 @@ import {
   SetAtom,
   TransientFieldStore,
   ValidationAtom,
-  WatchAtom,
-} from './types';
+  WatchAtom
+} from "./types";
 
 function isInput(el: HTMLElement): el is HTMLInputElement {
-  return el?.tagName === 'INPUT';
+  return el?.tagName === "INPUT";
 }
 function isSelect(el: HTMLElement): el is HTMLSelectElement {
-  return el?.tagName === 'SELECT';
+  return el?.tagName === "SELECT";
 }
 
 /**
@@ -48,9 +48,9 @@ export function getFromFormElement(el: HTMLElement): unknown {
   }
 
   if (isInput(el)) {
-    if (el.type === 'number' || el.type === 'range') {
+    if (el.type === "number" || el.type === "range") {
       return el.valueAsNumber;
-    } else if (el.type === 'checkbox') {
+    } else if (el.type === "checkbox") {
       return !!el.checked;
     } else {
       // All others assume string (even dates)
@@ -67,24 +67,24 @@ export function getFromFormElement(el: HTMLElement): unknown {
  * See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
  */
 export function setInFormElement(el: HTMLInputElement, value: unknown): void {
-  if (el.type === 'number') {
+  if (el.type === "number") {
     el.value = value as any;
-  } else if (el.type === 'checkbox') {
+  } else if (el.type === "checkbox") {
     el.checked = value as boolean;
   } else {
     // All others assume string (even dates)
-    el.value = value || ('' as any);
+    el.value = value || ("" as any);
   }
 }
 
 export function getElementEvent(el: HTMLInputElement): string {
-  if (el?.type === 'checkbox' || el?.type === 'radio') {
-    return 'onClick';
-  } else if (el?.type === 'range') {
-    return 'onInput';
+  if (el?.type === "checkbox" || el?.type === "radio") {
+    return "onClick";
+  } else if (el?.type === "range") {
+    return "onInput";
   }
 
-  return 'onChange';
+  return "onChange";
 }
 
 type SetterUpdate = { field: string; el: HTMLInputElement | null };
@@ -96,7 +96,7 @@ type DataAtom<T> = WritableAtom<T, SetStateAction<T>>;
 export function createFormAtoms<FormData extends JsonObject>({
   dataAtom,
   errorStackAtom,
-  transientFieldsAtom,
+  transientFieldsAtom
 }: {
   dataAtom: DataAtom<FormData>;
   errorStackAtom?: WritableAtom<ErrorStack, SetStateAction<ErrorStack>>;
@@ -126,7 +126,7 @@ export function createFormAtoms<FormData extends JsonObject>({
           setInFormElement(el, value);
           set(refsAtom, prev => ({
             ...prev,
-            [field]: prev[field]?.add(el) || new Set([el]),
+            [field]: prev[field]?.add(el) || new Set([el])
           }));
         }
       }
@@ -171,7 +171,7 @@ export function createFormAtoms<FormData extends JsonObject>({
         if (error) {
           const errorObj = {
             jsonPointer: field,
-            error,
+            error
           };
 
           set(errorStackBaseAtom, prev => addOrReplaceToStack(prev, errorObj));
@@ -240,21 +240,21 @@ export function createFormAtoms<FormData extends JsonObject>({
     field: string,
     options?: {
       validate?: FieldValidation;
-      type?: 'controlled' | undefined;
+      type?: "controlled" | undefined;
     }
   ): FieldAtom<ControlSetReturn>;
   function fieldAtom(
     field: string,
     options?: {
       validate?: FieldValidation;
-      type?: 'uncontrolled';
+      type?: "uncontrolled";
     }
   ): FieldAtom<RegisterSetReturn>;
   function fieldAtom(
     field: string,
     options?: {
       validate?: FieldValidation;
-      type?: 'transient';
+      type?: "transient";
     }
   ): FieldAtom<HiddenSetReturn>;
   function fieldAtom(
@@ -267,7 +267,7 @@ export function createFormAtoms<FormData extends JsonObject>({
     const nameAtom = atom(field);
 
     const valueBaseAtom = atom(get => {
-      if (options?.type !== 'uncontrolled') {
+      if (options?.type !== "uncontrolled") {
         if (field in get(transientFieldStoreAtom)) {
           return get(transientFieldStoreAtom)[field];
         }
@@ -303,14 +303,14 @@ export function createFormAtoms<FormData extends JsonObject>({
       _ => null,
       (_, set) => {
         switch (options?.type) {
-          case 'uncontrolled':
+          case "uncontrolled":
             return (set(registerAtom, field) as unknown) as RegisterSetReturn;
-          case 'transient':
+          case "transient":
             return (set(hiddenAtom, field) as unknown) as HiddenSetReturn;
           default:
             return (set(controlAtom, {
               field,
-              validation: options?.validate,
+              validation: options?.validate
             }) as unknown) as ControlSetReturn;
         }
       }
@@ -322,7 +322,7 @@ export function createFormAtoms<FormData extends JsonObject>({
       configAtom,
       errorAtom: fieldErrorAtom,
       dirtyAtom,
-      touchedAtom,
+      touchedAtom
     });
   }
 
@@ -353,7 +353,7 @@ export function createFormAtoms<FormData extends JsonObject>({
               }
               return next;
             });
-          },
+          }
         },
         ref: (el: HTMLInputElement | null) => {
           set(regAtom, { field, el });
@@ -370,7 +370,7 @@ export function createFormAtoms<FormData extends JsonObject>({
           const el = e.target as HTMLInputElement;
           const value = getFromFormElement(el);
 
-          if (value === '') {
+          if (value === "") {
             set(dataAtom, prev => {
               const next = { ...prev };
               pointerRemove(next, field);
@@ -385,7 +385,7 @@ export function createFormAtoms<FormData extends JsonObject>({
             pointerSet(next, field, value);
             return next;
           });
-        },
+        }
       };
     }
   );
@@ -419,7 +419,7 @@ export function createFormAtoms<FormData extends JsonObject>({
               }
               return next;
             });
-          },
+          }
         },
         onBlur: () => {
           set(touchedFieldsAtom, prev => new Set(Array.from(prev.add(field))));
@@ -438,7 +438,7 @@ export function createFormAtoms<FormData extends JsonObject>({
           });
           // Update error with new value
           set(checkErrorAtom, { value, field });
-        },
+        }
       };
     }
   );
@@ -454,20 +454,20 @@ export function createFormAtoms<FormData extends JsonObject>({
               delete next[field];
               return next;
             });
-          },
+          }
         },
         onChange: (value: unknown) => {
           set(transientFieldStoreAtom, (prev: TransientFieldStore) => ({
             ...prev,
-            [field]: value,
+            [field]: value
           }));
-        },
+        }
       };
     }
   );
 
   const formActionsAtom: ActionsAtom = atom(null, (get, set, reduce) => {
-    if (reduce.action === 'RESET') {
+    if (reduce.action === "RESET") {
       const refs = get(refsAtom);
       const refKeys = Object.keys(refs);
 
@@ -523,7 +523,7 @@ export function createFormAtoms<FormData extends JsonObject>({
       const validationErrors = resolver(baseData);
       const mapToArray = Object.keys(validationErrors).map(key => ({
         jsonPointer: key,
-        error: validationErrors[key],
+        error: validationErrors[key]
       }));
       set(errorStackBaseAtom, mapToArray);
     }
@@ -576,7 +576,7 @@ export function createFormAtoms<FormData extends JsonObject>({
 
     // Only helpful for nested forms
     errorsAtom,
-    formDataAtom,
+    formDataAtom
   };
 }
 
@@ -584,7 +584,7 @@ export function getSubErrors(
   errorStack: ErrorStack,
   jsonPointer: string | string[]
 ) {
-  if (typeof jsonPointer === 'string')
+  if (typeof jsonPointer === "string")
     return errorStack.filter(
       error =>
         error.jsonPointer === jsonPointer ||
