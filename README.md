@@ -2,106 +2,72 @@
 
 `jotai-hook-form` is a way to build out complex forms with jotai, built off of JSON Pointers.
 
-Inspired by `react-hook-form`, it allows for the progressive building of a form data object, letting you add fields one-at-a-time and manage the form data one field at a time.
+Inspired by `react-hook-form`, it allows for the progressive building of a form data object, letting you add fields and manage the form data one field at a time.
 
 ## Table of Contents
 - [`jotai-hook-form`](#jotai-hook-form)
   - [Table of Contents](#table-of-contents)
-  - [Example](#example)
-    - [1. Initialise form atoms](#1-initialise-form-atoms)
-    - [2. Build the form object](#2-build-the-form-object)
-    - [3. Attach to the view](#3-attach-to-the-view)
+  - [Quick start](#quick-start)
   - [Building blocks](#building-blocks)
     - [Atom level: `createFormAtoms`](#atom-level-createformatoms)
     - [Hook level: `useFormAtoms`](#hook-level-useformatoms)
   - [Types of fields](#types-of-fields)
-    - [Uncontrolled fields: `useField`, `registerAtom`](#uncontrolled-fields-usefield-registeratom)
-    - [Controlled fields: `useControlledField`, `controlAtom`](#controlled-fields-usecontrolledfield-controlatom)
-    - [Transient fields: `useTransientField`, `hiddenAtom`](#transient-fields-usetransientfield-hiddenatom)
+    - [Controlled fields: `fieldAtom`, `useControlledField`, `controlAtom`](#controlled-fields-fieldatom-usecontrolledfield-controlatom)
+    - [Uncontrolled fields: `fieldAtom`, `useField`, `registerAtom`](#uncontrolled-fields-fieldatom-usefield-registeratom)
+    - [Transient fields: `fieldAtom`, `useTransientField`, `hiddenAtom`](#transient-fields-fieldatom-usetransientfield-hiddenatom)
     - [Conditional fields: `<Conditional>`](#conditional-fields-conditional)
-  - [Deep dive](#deep-dive)
-    - [Available atoms](#available-atoms)
-      - [`registerAtom`](#registeratom)
-      - [`controlAtom`](#controlatom)
-      - [`hiddenAtom`](#hiddenatom)
-      - [`watchAtom`](#watchatom)
-      - [`validationAtom`](#validationatom)
-    - [Available hooks](#available-hooks)
-      - [`useField`](#usefield)
-      - [`useControlledField`](#usecontrolledfield)
-      - [`useTransientField`](#usetransientfield)
-  - [Mocking](#mocking)
-    - [`mockField`](#mockfield)
+  - [Field-level validation](#field-level-validation)
+  - [API](#api)
+    - [Form atoms](#form-atoms)
+    - [Field properties](#field-properties)
+    - [Components](#components)
   - [Typescript](#typescript)
-## Example
+## Quick start
 
-[CodeSandbox](https://codesandbox.io/s/boring-sanderson-2g43k3?file=/src/App.tsx)
 ```tsx
+import { useSetAtom } from 'jotai'
+import { createFormAtoms, useFieldAtom } from 'jotai-hook-form'
+import type { FieldAtom } from 'jotai-hook-form'
+
 type FormData = {
   firstName: string;
   lastName: string;
   phoneNumber: number;
 };
 
-/** 1. Initialise form atoms */
+//1. Define your form data atom
 const dataAtom = atom({} as FormData);
-const errorStackAtom = atom([] as ErrorStack);
+const { fieldAtom } = createFormAtoms<FormData>({ dataAtom });
 
-const formAtoms = createFormAtoms<FormData>({ dataAtom, errorStackAtom });
+//2. Initialise fields on your data atom
+const firstNameFieldAtom = fieldAtom("/firstName")
+const lastNameFieldAtom = fieldAtom("/lastName")
+const phoneNumberFieldAtom = fieldAtom("/phoneNumber")
 
-...
+const submitAtom = atom(null, (set, get) => {
+  const data = get(dataAtom)
+  console.log("Form data:", { data })
+})
 
-const FormComponent = () => {
-  ...
-
-  /** 2. Build the form object */
-  const { useField } = useFormAtoms(formAtoms);
-
-  const firstName = useField("/firstName");
-  const lastName = useField("/lastName");
-  const phoneNumber = useField("/phoneNumber");
+const Form = () => {
+  const submit = useSetAtom(submitAtom)
 
   return (
-    <form onSubmit={onSubmit}>
-      /** 3. Attach to the view */
-      <input type="text" placeholder="First name" {...firstName} />
-      <input type="text" placeholder="Last name" {...lastName} />
-      <input type="number" placeholder="Phone number" {...phoneNumber} />
+    <form onSubmit={submit}>
+      <Field type="text" placeholder="First name" fieldAtom={firstNameFieldAtom} />
+      <Field type="text" placeholder="Last name" fieldAtom={lastNameFieldAtom} />
+      <Field type="number" placeholder="Phone number" fieldAtom={phoneNumberFieldAtom} />
       <button type="submit">Submit</button>
     </form>
   );
 };
+
+const Field = ({ fieldAtom: FieldAtom, ...inputProps }) => {
+  const field = useFieldAtom(fieldAtom)
+
+  return <input {...inputProps} {...field}/>
+}
 ```
-
-### 1. Initialise form atoms
-```tsx
-const dataAtom = atom({} as FormData)
-const errorStackAtom = atom([] as ErrorStack)
-
-const formAtoms = createFormAtoms<FormData>({dataAtom, errorStackAtom})
-```
-
-`createFormAtoms` takes in your form data atom, and an `errorStackAtom`, and returns all the atoms necessary to start building out a form. 
-
-### 2. Build the form object
-```tsx
-  const { useField } = useFormAtoms(formAtoms)
-
-  const firstName = useField('/firstName')
-  const lastName = useField('/lastName')
-  const phoneNumber = useField("/phoneNumber")
-```
-
-Pass `formAtoms` (the return from `createFormAtoms`) into `useFormAtoms` to get the hooks needed to specify fields via `json-pointer` keys. With these hooks, you can start to specify what fields are included in the form. Each field key should map to a property on your data object, and be a valid JSON Pointer. [Check out the docs]() for more info on how to utilise JSON Pointers.
-
-### 3. Attach to the view
-```tsx
-      <input type="text" {...firstName} />
-      <input type="text" {...lastName} />
-      <input type="number" {...phoneNumber} />
-```
-
-Each field initialised by `useField`, `useControlledField`, or `useTransientField` will contain the necessary properties to listen to changes in the fields. `useField` will try to be smart and listen to a specific event depending on the DOM form element attached, whereas `useControlledField` and `useTransientField` will return `value` and `onChange` properties.
 
 ## Building blocks
 
@@ -109,7 +75,7 @@ Each field initialised by `useField`, `useControlledField`, or `useTransientFiel
 
 ### Atom level: `createFormAtoms`
 
-`createFormAtoms` takes in a `dataAtom` which will hold your form data object, as well as an `errorStackAtom` which will be responsible for storing a mapping from a field's JSON Pointer, to an array of errors. There is also an optional third atom parameter for `transientFieldsAtom` which will hold all values for your [transient fields](#).
+`createFormAtoms` takes in a `dataAtom` which will hold your form data object. It accepts the optional `errorStackAtom`, which will be responsible for storing a mapping from a field's JSON Pointer, to an array of errors. There is also an optional third atom parameter for `transientFieldsAtom` which will hold all values for your [transient fields](#transient-fields-fieldatom-usetransientfield-hiddenatom).
 
 ```tsx
 const dataAtom = atom<FormData>({})
@@ -124,13 +90,16 @@ const formAtoms = createFormAtoms<FormData>({
 ```
 
 The `createFormAtoms` function returns a list of atoms that can be used to build out forms and corresponding form logic:
-- [`registerAtom`](#registeratom): Add an [uncontrolled field](#) to the form object
-- [`controlAtom`](#controlatom): Add a [controlled field](#) to the form object
-- [`hiddenAtom`](#hiddenatom): Add a [transient field](#) to the transient fields object
+- [`fieldAtom`](#fieldatom): Add a field to the form object, defaults to an [uncontrolled field](#uncontrolled-fields-fieldatom-usefield-registeratom)
+- [`registerAtom`](#registeratom): Add an [uncontrolled field](#uncontrolled-fields-fieldatom-usefield-registeratom) to the form object
+- [`controlAtom`](#controlatom): Add a [controlled field](#controlled-fields-fieldatom-usecontrolledfield-controlatom) to the form object
+- [`hiddenAtom`](#hiddenatom): Add a [transient field](#transient-fields-fieldatom-usetransientfield-hiddenatom) to the transient fields object
 - [`watchAtom`](#watchatom): Subscribe to an individual field (both form and transient)
 - [`validationAtom`](#validationatom): Takes in a resolver that maps form data to errors and stores those errors in the `errorStackAtom`
 - [`formActionsAtom`](#formactionsatom): A reducer atom. Currently supports resetting of the form state.
 - [`setAtom`](#setatom): Can be used to set a specific field (form or transient).
+
+From here, you can now use `fieldAtom` to specify all the fields within your form. These fields will be added as properties to the `dataAtom`
 
 ### Hook level: `useFormAtoms`
 
@@ -163,7 +132,27 @@ Each hook takes in a JSON Pointer that will specify the property within the data
 
 ## Types of fields
 
-### Uncontrolled fields: `useField`, `registerAtom`
+### Controlled fields: `fieldAtom`, `useControlledField`, `controlAtom`
+
+Controlled fields are the bread-and-butter for more complex forms with fields needing more advanced logic than what is available from vanilla form elements. These would include components like `react-select`'s `Select`, or simply any form component that as input `value` and `onChange` as props.
+
+Controlled fields can be created with `fieldAtom` by default
+
+Otherwise, controlled fields can be built using the `useControlledField` hook, or using the `controlAtom` - for the `onChange` injection - in combination with the `watchAtom` to get the `value`. `controlAtom` is returned by `createFormAtoms` function, whereas `useControlledField` comes from `useFormAtoms`
+
+```tsx
+const lastNameFieldAtom = fieldAtom('/lastName')
+```
+is equivalent to
+```tsx
+const lastName = useControlledField('/lastName')
+```
+or
+```tsx
+const lastNameChangeAtom = set(controlAtom, '/lastName')
+const lastNameValueAtom = watchAtom('/lastName')
+```
+### Uncontrolled fields: `fieldAtom`, `useField`, `registerAtom`
 
 Uncontrolled fields are either vanilla HTML form elements (`input`, `select`, etc.) or components whose ref is attached to a vanilla form element (usually through the use of `forwardRef`). They have an internal, DOM-controlled value property that can be managed via refs, thereby not requiring re-renders to update their value within the element.
 
@@ -172,35 +161,31 @@ Uncontrolled fields are the optimal way to build forms as they can listen to inp
 Uncontrolled fields can be handled by initialising a field with the `useField` hook, or the `registerAtom` that is returned by `createFormAtoms`
 
 ```tsx
-const firstName = useField('/firstName')
+const firstNameAtom = fieldAtom('/firstName', { type: 'uncontrolled' })
 ```
 is equivalent to 
+```tsx
+const firstName = useField('/firstName')
+```
+or
 ```tsx
 const firstNameAtom = set(registerAtom, '/firstName')
 ```
 
-### Controlled fields: `useControlledField`, `controlAtom`
 
-Controlled fields are the bread-and-butter for more complex forms with fields needing more advanced logic than what is available from vanilla form elements. These would include components like `react-select`'s `Select`, or simply any form component that as input `value` and `onChange` as props.
-
-Controlled fields can be built using the `useControlledField` hook, or using the `controlAtom` - for the `onChange` injection - in combination with the `watchAtom` to get the `value`. `controlAtom` is returned by `createFormAtoms` function, whereas `useControlledField` comes from `useFormAtoms`
-
-```tsx
-const lastName = useControlledField('/lastName')
-```
-is equivalent to
-```tsx
-const lastNameChangeAtom = set(controlAtom, '/lastName')
-const lastNameValueAtom = watchAtom('/lastName')
-```
-
-### Transient fields: `useTransientField`, `hiddenAtom`
+### Transient fields: `fieldAtom`, `useTransientField`, `hiddenAtom`
 "Transient" fields, as we've coined them, are fields that exist within the form's view and logic but shouldn't be stored on the form data object. This is useful for fields that conditionally render different sections of a form, where you only want to store the actual data fields and not whether the section is showing.
 
+**Transient fields are stored seperately to the data object**. `jotai-hook-form` will store these fields in the `transientFieldsAtom` passed into `createFormAtoms`. If this was not passed in, it will use an internal atom.
+
+```tsx
+const formSection = fieldAtom('/currentSection', { type: 'transient' })
+```
+is equivalent to
 ```tsx
 const formSection = useTransientField('/currentSection')
 ```
-is equivalent to
+or
 ```tsx
 const formSectionAtom = set(hiddenAtom, '/currentSection')
 const formSectionValueAtom = watchAtom('/currentSection')
@@ -214,8 +199,9 @@ Note: `useTransientField` acts exactly like `useControlledField` and does not tr
 ### Conditional fields: `<Conditional>`
 In the case that fields need to be removed and re-added to the form data object whenever they leave or re-enter the DOM respectively (i.e. conditional fields), the `<Conditional>` component can wrap around the element within the view to listen to these changes.
 
-`<Conditional>` takes in 3 props:
-- `show?: boolean`: A flag to conditionally render its children.
+`<Conditional>` takes in 4 props:
+- `show: boolean`: A flag to conditionally render its children.
+- `fields?: { listeners: Listeners }`: An array of field objects corresponding to the fields inside the `Conditional` component
 - `onMount: () => void`: A function to run on-mount.
 - `onUnmount: () => void`: A function to run on-unmount.
 
@@ -224,7 +210,8 @@ To connect a field that has already been initialised by one of the 3 hooks retur
 Example:
 ```tsx
 ...
-const conditionalField = useField('/conditionalField')
+const conditionalFieldOne = useField('/conditionalFieldOne')
+const conditionalFieldTwo = useField('/conditionalFieldTwo')
 const showConditional = useTransientField('/showConditional')
 
 return (
@@ -236,76 +223,73 @@ return (
     />
     <Conditional
       show={showConditional.value}
-      {...conditionalField.listeners}
+      fields={[conditionalFieldOne, conditionalFieldTwo]}
     >
-      <input type="text" {...conditionalField} />
+      <input type="text" {...conditionalFieldOne} />
+      <input type="text" {...conditionalFieldTwo} />
     </Conditional>
   </form>
 )
 ...
 ```
-Opposed to other libraries, like `react-hook-form`, `<Conditional>` works with both controlled and uncontrolled fields. As of right now, multiple conditional fields will require being individually wrapped by a corresponding `<Conditional>` component.
+Opposed to other libraries, like `react-hook-form`, `<Conditional>` works with both controlled and uncontrolled fields. 
 
+## Field-level validation
 
-## Deep dive
+Field level validation can be specified using the `validate` property within the optional config for `fieldAtom`, `useField`, or `useControlledField`.
 
-### Available atoms
-#### `registerAtom`
-- `get => null`
-- `(get, set, field: string) => FieldObject`
+An error object must be returned from the `validate` function. Error objects have `type: string`, and `message?: string` properties.
 
-#### `controlAtom`
-- `get => null`
-- `(get, set, field: string) => FieldObject`
-
-#### `hiddenAtom`
-- `get => null`
-- `(get, set, field: string) => FieldObject`
-
-#### `watchAtom`
-- `(field: string) => FieldValue`
-#### `validationAtom`
-- `get => null`
-- `(get, set, {resolver: Resolver, data?: FormData}) => void`
-
-### Available hooks
-#### `useField`
-```ts
-(field: string) => {
-  ref: Ref,
-  name: string,
-  error: Error,
-  [onChange | onClick | onInput]: (value: any) => void,
-  listeners: {
-    onMount: () => void,
-    onUnmount: () => void
+**Example**
+```tsx
+const validatedFieldAtom = fieldAtom('/validated', {
+  validate: (field: { value: any, touched: boolean, dirty: boolean }) => {
+    if (field.value === "" && field.touched) {
+      return {
+        type: "required",
+        message: "This field is required"
+      }
+    }
   }
-}
+})
 ```
-#### `useControlledField`
-```ts
-(field: string, options?: { onChangeMiddleware: (value: any) => void }) => {
-  value: any,
-  error: Error,
-  onChange: (value: any) => void,
-  listeners: {
-    onMount: () => void,
-    onUnmount: () => void
-  }
-}
-```
-#### `useTransientField`
-```ts
-(field: string, options?: { onChangeMiddleware: (value: any) => void }) => {
-  value: any,
-  error: Error,
-  onChange: (value: any) => void,
-  listeners: {
-    onUnmount: () => void
-  }
-}
-```
-## Mocking
-### `mockField`
+
+
+## API
+
+| High-level API | Description |
+|-----------|-------------|
+| `createFormAtoms()` | A function to initialise a `jotai-hook-form` form. Takes in a `dataAtom` and optionally `errorStackAtom`, and `transientFieldsAtom` |
+| `useFormAtoms()` | A hook to utilise the form atoms returned by `createFormAtoms` |
+| `useFieldAtom()` | A hook that converts a field atom created by `fieldAtom` into an object representation |
+
+### Form atoms
+Atoms returned from `createFormAtoms`
+| Form atoms | Description |
+|-----------|-------------|
+| `fieldAtom()` | An atom that specifies fields within the form's `dataAtom`, using JSON Pointers |
+| `registerAtom()` | An atom that creates an uncontrolled field within the form's `dataAtom`, using JSON Pointers |
+| `controlAtom()` | An atom that creates a controlled field within the form's `dataAtom`, using JSON Pointers |
+| `hiddenAtom()` | An atom that creates a transient field within the form's `transientFieldsAtom`, using JSON Pointers |
+| `watchAtom()` | An atom that listens to a property within the form's `dataAtom` |
+| `errorAtom()` | An atom that listens to a field's error within the form's `errorStackAtom` |
+| `errorStackAtom()` | An atom that stores form errors by JSON Pointer and error type |
+
+### Field properties
+Properties of a field when returned from `useFieldAtom`
+| Properties | Description |
+|------------|-------------|
+| `name` | The JSON Pointer of the field |
+| `value` | The current value of the field |
+| `onChange` | The function to run when the field input value changes (not on uncontrolled fields) |
+| `onBlur` | The function to run when the field input is blurred |
+| `listeners` | Contains `onMount`, and `onUnmount` functions to pass into the `<Conditional>` component |
+| `status` | Contains `dirty`, and `touched` statuses for the field |
+| `error` | The current error value of the field |
+
+### Components
+| Component | Description |
+|-----------|-------------|
+| `Conditional` | Component that handles conditional form fields, removing them from the form `dataAtom` on unmount, and listening to onmount |
 
 ## Typescript
