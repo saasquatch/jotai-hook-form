@@ -38,7 +38,7 @@
     "trailingComma": "es5"
   },
   "name": "jotai-hook-form",
-  "author": "Referral SaaSquatch Inc.",
+  "author": "ReferralSaaSquatch.com, Inc.",
   "description": "Build complex forms with jotai, using JSON pointers.",
   "module": "dist/jotai-hook-form.esm.js",
   "repository": {
