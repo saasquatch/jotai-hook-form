@@ -331,7 +331,7 @@ export function createFormAtoms<FormData extends JsonObject>({
     _ => null,
     (get, set, field: string) => {
       if (!get(fieldRegAtom).has(field))
-        set(fieldRegAtom, prev => prev.add(field));
+        set(fieldRegAtom, prev => new Set(Array.from(prev.add(field))));
 
       const inputEl = Array.from(get(regAtom)[field]?.values() || [])[0];
       const onEvent = getElementEvent(inputEl);
@@ -397,7 +397,7 @@ export function createFormAtoms<FormData extends JsonObject>({
     _ => null,
     (get, set, { field, validation }) => {
       if (!get(fieldRegAtom).has(field)) {
-        set(fieldRegAtom, prev => prev.add(field));
+        set(fieldRegAtom, prev => new Set(Array.from(prev.add(field))));
         validation &&
           set(fieldValidationAtom, prev => ({ ...prev, [field]: validation }));
       }
