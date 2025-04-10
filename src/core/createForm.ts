@@ -283,12 +283,8 @@ export function createFormAtoms<FormData extends JsonObject>({
 
     const valueAtom = atom(
       get => get(valueBaseAtom),
-      (get, set) => {
-        set(initialDataBaseAtom, (prev: FormData | null) => {
-          const next = { ...prev };
-          pointerSet(next, field, get(valueBaseAtom));
-          return next as FormData;
-        });
+      (_, set) => {
+        set(initialDataAtom, dataAtom);
       }
     );
     valueAtom.onMount = setAtom => {
