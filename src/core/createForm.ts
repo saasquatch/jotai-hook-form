@@ -1,12 +1,12 @@
 import { Atom, atom, WritableAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import {
+  JsonObject,
   get as pointerGet,
   has as pointerHas,
-  remove as pointerRemove,
-  set as pointerSet,
   parse as pointerParse,
-  JsonObject
+  remove as pointerRemove,
+  set as pointerSet
 } from "json-pointer";
 import { ChangeEvent, SetStateAction } from "react";
 import { addOrReplaceToStack } from "../utils/addOrReplaceToStack";
@@ -425,7 +425,10 @@ export function createFormAtoms<FormData extends JsonObject>({
           if (pointerHas(data, field))
             set(checkErrorAtom, { value: pointerGet(data, field), field });
         },
-        onChange: (value: unknown) => {
+        onChange: (next: unknown) => {
+          const prev = get(dataAtom);
+          const value = typeof next === "function" ? next(prev) : next;
+
           // Update data atom
           set(dataAtom, prev => {
             const next = { ...prev };
