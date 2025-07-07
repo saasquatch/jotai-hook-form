@@ -1,8 +1,8 @@
-import { atom, useAtomValue } from 'jotai';
-import * as React from 'react';
-import 'react-app-polyfill/ie11';
-import * as ReactDOM from 'react-dom';
-import { Conditional, createFormAtoms, useFieldAtom, useFormAtoms } from '../.';
+import { atom, useAtomValue } from "jotai";
+import * as React from "react";
+import "react-app-polyfill/ie11";
+import * as ReactDOM from "react-dom";
+import { Conditional, createFormAtoms, useFieldAtom, useFormAtoms } from "../.";
 
 type FormData = {
   email: string;
@@ -10,29 +10,29 @@ type FormData = {
 };
 
 const dataAtom = atom({
-  email: 'a@example.com',
-  password: 'asdfasdfasdf',
+  email: "a@example.com",
+  password: "asdfasdfasdf"
 } as FormData);
 
 const formAtoms = createFormAtoms<FormData>({ dataAtom });
-const checkAtom = formAtoms.fieldAtom('/checked');
-const firstNameAtom = formAtoms.fieldAtom('/firstname', {
+const checkAtom = formAtoms.fieldAtom("/checked");
+const firstNameAtom = formAtoms.fieldAtom("/firstname", {
   validate: field => {
     if (!field.value && field.touched) {
       return {
-        type: 'required',
-        message: 'First name is required',
+        type: "required",
+        message: "First name is required"
       };
     }
 
-    if (!field.value.startsWith('test_') && field.touched) {
+    if (!field.value.startsWith("test_") && field.touched) {
       return {
-        type: 'required',
-        message: 'First name must start with "test_"',
+        type: "required",
+        message: 'First name must start with "test_"'
       };
     }
   },
-  type: 'controlled',
+  type: "controlled"
 });
 
 const App = () => {
@@ -41,11 +41,11 @@ const App = () => {
 
   const { useControlledField } = useFormAtoms(formAtoms);
 
-  const lastname = useControlledField('/lastname');
+  const lastname = useControlledField("/lastname");
 
   return (
     <div>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
         <input
           type="checkbox"
           checked={check.value}
@@ -76,8 +76,20 @@ const App = () => {
 
 const Data = () => {
   const data = useAtomValue(dataAtom);
+  const formData = useAtomValue(formAtoms.formDataAtom);
 
-  return <pre>{JSON.stringify(data)}</pre>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <span>
+        Data:
+        <pre>{JSON.stringify(data)}</pre>
+      </span>
+      <span>
+        FormData:
+        <pre>{JSON.stringify(formData)}</pre>
+      </span>
+    </div>
+  );
 };
 
 const Errors = () => {
@@ -90,17 +102,17 @@ const Input = ({ name, type }: { name: any; type: any }) => {
   const { useControlledField } = useFormAtoms(formAtoms);
   const field = useControlledField(name, {
     validate: field => {
-      if (field.touched && !field.value.startsWith('test_')) {
+      if (field.touched && !field.value.startsWith("test_")) {
         return {
-          type: 'required',
-          message: `Must start with "test_"`,
+          type: "required",
+          message: `Must start with "test_"`
         };
       }
-    },
+    }
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: "flex", flexDirection: "column" }}>
       <input
         type={type}
         {...field}
@@ -112,4 +124,4 @@ const Input = ({ name, type }: { name: any; type: any }) => {
   );
 };
 
-ReactDOM.render(<App />, document.getElementById('root'));
+ReactDOM.render(<App />, document.getElementById("root"));
